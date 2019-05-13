@@ -4,9 +4,10 @@ Created on Tue Apr  9 14:47:11 2019
 
 @author: Daiwei Lin
 """
-#include <Python.h>
 import time
 import numpy as np
+import math
+
 '''
 class Actuator:
     def __init__(self, act_type):
@@ -23,8 +24,10 @@ class Sensor:
         return None
 
 '''
+
+
 class Node:
-    def __init__(self, sma_num, led_num, moth_num):
+    def __init__(self, sma_num, led_num, moth_num, para=None):
         self.sma_num = sma_num
         self.led_num = led_num
         self.moth_num = moth_num
@@ -37,10 +40,21 @@ class Node:
         self.led_start_t = 0.0
         self.moth_start_t = 0.0
 
-        self.sma_val = np.zeros((1,sma_num),dtype=np.float64)
-        self.led_val = np.zeros((1,led_num),dtype=np.float64)
-        self.moth_val = np.zeros((1,moth_num),dtype=np.float64)
+        self.sma_val = [0.0]*sma_num
+        self.led_val = [0.0]*led_num
+        self.moth_val = [0.0]*moth_num
 
+        # ====================#
+        # Tunable parameters #
+        # ====================#
+        if para is not None:
+            self.sma_dur = para['sma_dur']
+            self.led_dur = para['led_dur']
+            self.moth_dur = para['moth_dur']
+        else:
+            self.sma_dur = 5
+            self.led_dur = 2
+            self.moth_dur = 2
 
     def node_step(self):
         curr_t = time.time()
@@ -48,18 +62,24 @@ class Node:
         sma_duration = curr_t - self.sma_start_t
         if sma_duration <= 5.0:
             for i in range(self.sma_num):
-                self.sma_val[i] = sma_duration/5.0
+                self.sma_val[i] = sma_duration / 5.0
         else:
             for i in range(self.sma_num):
                 self.sma_val[i] = 0
             self.sma_act = False
-        print("SMA : ".format(self.sma_val.tolist()))
+        # print("SMA : {}".format(self.sma_val))
 
         led_duration = curr_t - self.led_start_t
-        if sma_duration <= 2.0:
+        if led_duration <= 2.0:
             for i in range(self.led_num):
                 self.led_val[i] = led_duration / 2.0
-        print("LED : ".format(self.led_val.tolist()))
+        else:
+            for i in range(self.led_num):
+                self.led_val[i] = 0
+            self.led_act = False
+
+        # print("LED : {}".format(self.led_val))
+        return self.led_val, self.sma_val #self.moth_val
 
     def activate(self, act_type):
         # start timer
@@ -80,11 +100,8 @@ class Node:
             raise ValueError("Invalid actuator type: {}".format(act_type))
 
 
-class Scupture:
+class Sculpture:
     def __init__(self, node_num, sma_num, led_num, moth_num):
-        # self.sma_list = list()
-        # self.led_list = list()
-        # self.moth_list = list()
 
         self.node_list = list()
         self.num_nodes = node_num
@@ -94,33 +111,39 @@ class Scupture:
         self.moth_num = moth_num
 
         for _ in range(node_num):
-            self.node_list.append(Node(sma_num,led_num,moth_num))
+            self.node_list.append(Node(sma_num, led_num, moth_num))
 
         print("Sculpture initialized.")
-        self.scupture_info()
-        # # actuators is a dictionary, i.e. {'sma':12, 'led':12}
-        # for act_type, num_actuators in actuators.items():
-        #     if act_type == 'sma':
-        #         for _ in range(num_actuators):
-        #             self.sma_list.append(Node(act_type))
-        #     elif act_type == 'led':
-        #         for _ in range(num_actuators):
-        #             self.led_list.append(Node(act_type))
-        #     elif act_type == 'moth':
-        #         for _ in range(num_actuators):
-        #             self.moth_list.append(Node(act_type))
-        #     else:
-        #         raise ValueError("Invalid actuator type: {}".format(act_type))
+        self.sculpture_info()
 
-    def scupture_step(self):
+        # create a chain that defines the structure of sculpture
+        # Used in propagation
+        self.chain = list()
+        for i in range(int(node_num/2)):
+            self.chain.append([2*i, 2*i+1])
+
+    def sculpture_step(self):
         # loop through all nodes
+        sma_action = list()
+        led_action = list()
+        print("Step ----------\n")
         for node in self.node_list:
-            node.node_step()
+            node_sma_action, node_led_action = node.node_step()
+            sma_action = sma_action + node_sma_action
+            led_action = led_action + node_led_action
 
-    def activate_local_reflex(self, index, act_type):
-        self.node_list[index].activate(act_type)
+        return sma_action + led_action
 
-    def scupture_info(self):
+    def activate_local_reflex(self, index, act_list):
+        '''
+
+        :param index: Node index
+        :param act_list: list of actuators to activate in the node
+        '''
+        for act in act_list:
+            self.node_list[index].activate(act)
+
+    def sculpture_info(self):
         print("{} nodes".format(self.num_nodes))
         print("Each node has {} sma, {} led, {} moth".format(self.sma_num, self.led_num, self.moth_num))
 
@@ -132,9 +155,11 @@ class Behaviour:
         self.state_timer = time.time()
         self.idle_timer = time.time()
 
+        self.propagation_list = list()
+
         print("Behaviour initialized.")
-    
-    def step(self):
+
+    def step(self, observation):
         # update system by one step
         if self.state == 'idle':
             # randomly select one node
@@ -144,24 +169,42 @@ class Behaviour:
                 rand_idx = np.random.randint(0, self.sculpture.num_nodes)
                 rand_actuator = np.random.choice(['led', 'sma'], 1)[0]
                 print("Activate local reflex on node{}".format(rand_idx, rand_actuator))
-                self.sculpture.activate_local_reflex(rand_idx, rand_actuator)
-
+                self.sculpture.activate_local_reflex(rand_idx, [rand_actuator])
         else:
-            # do something
-            return
+            # actuate at the triggered node and propagate
+            trigger_nodes = observation > 0
+            for idx in range(len(observation)):
+                if trigger_nodes[idx]:
+                    self.sculpture.activate_local_reflex(idx, ['led', 'sma', 'moth'])
+                    self.create_propagation_list(idx)
+
+            # activate the nodes for propagation
+            if len(self.propagation_list) > 0:
+                for nodes in self.propagation_list[0]:
+                    self.sculpture.activate_local_reflex(nodes, ['led', 'sma', 'moth'])
+                self.propagation_list.pop()
 
 
-    def propagate(self):
-        # for i in self.sculpture.sma_list:
-        #     self.actuate()
-        return 0
+        action = self.sculpture.sculpture_step()
+        print("action = {}".format(action))
+        return action
 
+    def create_propagation_list(self, node_index):
+        # find location
+        start_point = -1
+        for i in range(len(self.sculpture.chain)):
+            if node_index in self.sculpture.chain[i]:
+                start_point = i
+                break
+        assert start_point >= 0, "No starting point found for propagation."
 
+        self.propagation_list.append([])
 
 
 if __name__ == '__main__':
-    ROM_sculpture = Scupture(1,2,1,1)
+    ROM_sculpture = Sculpture(node_num=4, sma_num=2, led_num=1, moth_num=1)
     behaviour = Behaviour(ROM_sculpture)
 
     while True:
-        behaviour.step()
+        behaviour.step([0,0,0,0])
+        time.sleep(0.2)
