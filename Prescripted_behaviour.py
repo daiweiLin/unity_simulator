@@ -57,6 +57,11 @@ class Node:
             self.moth_dur = 2
 
     def node_step(self):
+        """
+        Perform one step of one node and returns actions
+        :return: led*num_led, sma*num_sma
+        """
+
         curr_t = time.time()
 
         sma_duration = curr_t - self.sma_start_t
@@ -79,6 +84,7 @@ class Node:
             self.led_act = False
 
         # print("LED : {}".format(self.led_val))
+
         return self.led_val, self.sma_val #self.moth_val
 
     def activate(self, act_type):
@@ -123,10 +129,14 @@ class Sculpture:
             self.chain.append([2*i, 2*i+1])
 
     def sculpture_step(self):
+        '''
+        Perform one step of the sculpture and returns actions of all actuators
+        :return: [led*num_led*num_node, sma*num_sma*num_node]
+        '''
+
         # loop through all nodes
         sma_action = list()
         led_action = list()
-        print("Step ----------\n")
         for node in self.node_list:
             node_sma_action, node_led_action = node.node_step()
             sma_action = sma_action + node_sma_action
@@ -154,6 +164,7 @@ class Behaviour:
         self.sculpture = sculpture
         self.state_timer = time.time()
         self.idle_timer = time.time()
+        self.propagate_timer = time.time()
 
         self.propagation_list = list()
 
@@ -161,6 +172,20 @@ class Behaviour:
 
     def step(self, observation):
         # update system by one step
+
+        # <state transition>
+        for obs in observation:
+            if obs > 0:
+                self.state = 'active'
+                self.state_timer = time.time()
+                break
+
+        if self.state == 'active' and time.time() - self.state_timer > 10:
+            print("Enter Idle state.")
+            self.state = 'idle'
+        # <end of state transition>
+
+        print("\n{} Step ----------".format(self.state))
         if self.state == 'idle':
             # randomly select one node
             if time.time() - self.idle_timer > 1:
@@ -168,25 +193,30 @@ class Behaviour:
 
                 rand_idx = np.random.randint(0, self.sculpture.num_nodes)
                 rand_actuator = np.random.choice(['led', 'sma'], 1)[0]
-                print("Activate local reflex on node{}".format(rand_idx, rand_actuator))
+                print("(IDLE)Activate {} on node{}".format(rand_actuator, rand_idx))
                 self.sculpture.activate_local_reflex(rand_idx, [rand_actuator])
         else:
             # actuate at the triggered node and propagate
             trigger_nodes = observation > 0
             for idx in range(len(observation)):
                 if trigger_nodes[idx]:
+                    print("(ACTIVE)Activate {} on node{}".format(['led', 'sma', 'moth'], idx))
                     self.sculpture.activate_local_reflex(idx, ['led', 'sma', 'moth'])
                     self.create_propagation_list(idx)
 
             # activate the nodes for propagation
             if len(self.propagation_list) > 0:
-                for nodes in self.propagation_list[0]:
-                    self.sculpture.activate_local_reflex(nodes, ['led', 'sma', 'moth'])
-                self.propagation_list.pop()
+                if time.time()-self.propagate_timer > 1:
+                    self.propagate_timer = time.time()
+                    print("Propagation list {}".format(self.propagation_list))
+                    for node in self.propagation_list[0]:
+                        print("(ACTIVE)(P)Activate {} on node{}".format(['led', 'sma', 'moth'], node))
+                        self.sculpture.activate_local_reflex(node, ['led', 'sma', 'moth'])
+                    self.propagation_list.pop(0)
 
 
         action = self.sculpture.sculpture_step()
-        print("action = {}".format(action))
+        # print("action = {}".format(action))
         return action
 
     def create_propagation_list(self, node_index):
@@ -198,13 +228,31 @@ class Behaviour:
                 break
         assert start_point >= 0, "No starting point found for propagation."
 
-        self.propagation_list.append([])
+        p_list = list()
+        i = 1
+        while True:
+            if node_index-i >= 0 and node_index+i <= self.sculpture.num_nodes-1:
+                p_list.append([node_index-i, node_index+i])
+            elif node_index-i >= 0:
+                p_list.append([node_index-i])
+            elif node_index+i <= self.sculpture.num_nodes-1:
+                p_list.append([node_index+i])
+            else:
+                break
+            i += 1
+        self.propagation_list = p_list
+        # print("Propagation list {}".format(self.propagation_list))
 
 
 if __name__ == '__main__':
     ROM_sculpture = Sculpture(node_num=4, sma_num=2, led_num=1, moth_num=1)
     behaviour = Behaviour(ROM_sculpture)
 
-    while True:
-        behaviour.step([0,0,0,0])
+    for i in range(1000):
+        observation = np.array([0,0,0,0])
+        if i % 20 == 19:
+            observation = np.array([0,0,1,0])
+
+        action =behaviour.step(observation)
+        print(action)
         time.sleep(0.2)
