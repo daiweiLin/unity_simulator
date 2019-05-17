@@ -48,13 +48,34 @@ class Node:
         # Tunable parameters #
         # ====================#
         if para is not None:
-            self.sma_dur = para['sma_dur']
-            self.led_dur = para['led_dur']
-            self.moth_dur = para['moth_dur']
+            self.led_ru = para['led_ru']
+            self.led_ho = para['led_ho']
+            self.led_rd = para['led_rd']
+            self.moth_ru = para['moth_ru']
+            self.moth_ho = para['moth_ho']
+            self.moth_rd = para['moth_rd']
+            self.I_max = para['I_max']
+
+            self.sma_gap = para['sma_gap']
+            self.n_gap = para['n_gap']
+            self.t_sma = para['t_sma']
+
         else:
+
             self.sma_dur = 5
             self.led_dur = 2
             self.moth_dur = 2
+
+    def set_parameters(self, para):
+        """
+        Set tunable parameters. If the actuator is being used, the parameters will be updated after
+        the actions are complete
+        :param para:
+        :return:
+        """
+
+        self.led_ru = para['led_ru']
+
 
     def node_step(self):
         """
