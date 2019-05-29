@@ -14,7 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mlagents.envs import UnityEnvironment
 from Prescripted_behaviour import *
-
+from LASAgent.LASBaselineAgent import *
 
 def visitor_behavior(observation, node_number):
     # print("visitor observation: {}".format(observation))
@@ -28,10 +28,10 @@ def visitor_behavior(observation, node_number):
     if len(x) > 1:
         random = np.random.randint(low=0, high=len(x)-1)
         visitor_action = [x[random], y[random]]
-        print("visitor find light at {}".format(visitor_action))
+        # print("visitor find light at {}".format(visitor_action))
     elif len(x) == 1:
         visitor_action = [x[0],y[0]]
-        print("visitor find light at {}".format(visitor_action))
+        # print("visitor find light at {}".format(visitor_action))
 
     return visitor_action
 
@@ -59,7 +59,7 @@ if __name__ == '__main__':
     # 3. Start the environment
     #    interact_with_app == True: interact with application
     #    interact_with_app == False: interact with Unity scene starting by click play in Unity
-    interact_with_app = True
+    interact_with_app = False
     if interact_with_app == True:
         env = UnityEnvironment(file_name=env_name, seed=1)
     else:
@@ -89,28 +89,38 @@ if __name__ == '__main__':
     ROM_sculpture = Sculpture(node_num=24, sma_num=6, led_num=1, moth_num=1)
     behaviour = Behaviour(ROM_sculpture)
 
+    # initialize ml agent
+    os.environ['OPENAI_LOGDIR'] = "F:\\LAS_Gym\\train_log"
+    os.environ['OPENAI_LOG_FORMAT'] = 'stdout,tensorboard'
 
-    # 5. Take random actions in the environment
+    # env_obs_convert = np.array([1 / 3.15, 1 / 3.15, 1 / 3.15, 1 / 4, 1 / 4, 1 / 4, 1 / 10, 1 / 10])
+    agent = BaselineAgent('Baseline_Agent', observation_dim=24, action_dim=11, env=env, env_type='Unity',
+                          load_pretrained_agent_flag=False)
+
+    print("Learning:")
+    env_info = env.reset(train_mode=train_mode)
+    done = False
+    reward = 0
+    observation = env_info['LASBrain'].vector_observations[0] # * env_obs_convert
+
 
     for episode in range(100):
         env_info = env.reset(train_mode=train_mode)
         done = False
         episode_rewards = 0
         while not done:
-            action_size = brain.vector_action_space_size
-            if brain.vector_action_space_type == 'continuous':
-                # action = {'brain1':[1.0, 2.0], 'brain2':[3.0,4.0]}
-
-                take_action_flag = 1 # To match with Adam's code
-                # LAS_action = np.random.randn(brain.vector_action_space_size[0])
-                LAS_action = behaviour.step(env_info['LASBrain'].vector_observations[0])
-                LAS_action = LAS_action + [take_action_flag]
-                # print("LAS Action:{}".format(LAS_action))
-                Visitor_action = visitor_behavior(env_info['VisitorBrain'].vector_observations[0], node_number=24)
-                # LAS_action = np.ones(brain.vector_action_space_size[0])*0.1
-                action = {brain.brain_name: LAS_action, 'VisitorBrain': Visitor_action}
-                # print("LED_Action: {}".format(LAS_action[:24]))
-                env_info = env.step(action)
+            # action = {'brain1':[1.0, 2.0], 'brain2':[3.0,4.0]}
+            para_action = agent.interact(observation, reward, done)
+            behaviour.set_parameter(para_action)
+            take_action_flag = 1 # To match with Adam's code
+            LAS_action = behaviour.step(env_info['LASBrain'].vector_observations[0])
+            LAS_action = LAS_action + [take_action_flag]
+            # print("LAS Action:{}".format(LAS_action))
+            Visitor_action = visitor_behavior(env_info['VisitorBrain'].vector_observations[0], node_number=24)
+            # LAS_action = np.ones(brain.vector_action_space_size[0])*0.1
+            action = {brain.brain_name: LAS_action, 'VisitorBrain': Visitor_action}
+            # print("LED_Action: {}".format(LAS_action[:24]))
+            env_info = env.step(action)
 
             episode_rewards += env_info[brain.brain_name].rewards[0]
             done = env_info[brain.brain_name].local_done[0]
@@ -118,4 +128,4 @@ if __name__ == '__main__':
         print("Total reward of episode {}: {}".format(episode, episode_rewards))
 
     # 6. Close the environment when finished
-    env.close()
+    # env.close()

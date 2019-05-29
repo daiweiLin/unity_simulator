@@ -45,8 +45,10 @@ class Node:
         self.moth_val = [0.0]*moth_num
 
         # ====================#
-        # Tunable parameters #
+        # Tunable parameters  #
         # ====================#
+        self.para_length = 10
+        self.para_buffer = [None]*10
         if para is not None:
             self.led_ru = para['led_ru']
             self.led_ho = para['led_ho']
@@ -56,26 +58,72 @@ class Node:
             self.moth_rd = para['moth_rd']
             self.I_max = para['I_max']
 
+            self.ml_gap = para['ml_gap']
             self.sma_gap = para['sma_gap']
-            self.n_gap = para['n_gap']
-            self.t_sma = para['t_sma']
 
         else:
+            self.led_ru = 1
+            self.led_ho = 2
+            self.led_rd = 1
+            self.moth_ru = 1
+            self.moth_ho = 2
+            self.moth_rd = 1
+            self.I_max = 1
 
-            self.sma_dur = 5
-            self.led_dur = 2
-            self.moth_dur = 2
+            self.ml_gap = 1
+            self.sma_gap = 0.2
 
     def set_parameters(self, para):
         """
         Set tunable parameters. If the actuator is being used, the parameters will be updated after
         the actions are complete
-        :param para:
-        :return:
+        :param para: an array [led_ru, led_ho, led_rd, moth_ru, moth_ho, moth_rd, I_max, ml_gap, sma_gap]
         """
+        # LED
+        if not self.led_act:
+            # update parameters immediately
+            self.led_ru = para[0]
+            self.led_ho = para[1]
+            self.led_rd = para[2]
+        else:
+            self.para_buffer[0:3] = para[0:3]
 
-        self.led_ru = para['led_ru']
+        # moth
+        if not self.moth_act:
+            self.moth_ru = para[3]
+            self.moth_ho = para[4]
+            self.moth_rd = para[5]
+        else:
+            self.para_buffer[3:6] = para[3:6]
 
+        # SMA
+        if not self.sma_act:
+            self.I_max = para[6]
+            self.sma_gap = para[8]
+        else:
+            self.para_buffer[6] = para[6]
+            self.para_buffer[8] = para[8]
+
+    def update_para_from_buffer(self, actuator):
+        '''
+        Update parameters and clear buffer
+        '''
+
+        if actuator == 'led' and self.para_buffer[0] is not None:
+            self.led_ru = self.para_buffer[0]
+            self.led_ho = self.para_buffer[1]
+            self.led_rd = self.para_buffer[2]
+
+            self.para_buffer[0] = None
+            self.para_buffer[1] = None
+            self.para_buffer[2] = None
+
+        elif actuator == 'sma' and self.para_buffer[6] is not None:
+            self.I_max = self.para_buffer[6]
+            self.sma_gap = self.para_buffer[8]
+
+            self.para_buffer[6] = None
+            self.para_buffer[8] = None
 
     def node_step(self):
         """
@@ -85,27 +133,41 @@ class Node:
 
         curr_t = time.time()
 
+        # SMA
         sma_duration = curr_t - self.sma_start_t
         if sma_duration <= 5.0:
             for i in range(self.sma_num):
-                self.sma_val[i] = sma_duration / 5.0
+                self.sma_val[i] = self.I_max * sma_duration / 5.0
         else:
             for i in range(self.sma_num):
                 self.sma_val[i] = 0
             self.sma_act = False
+            self.update_para_from_buffer('sma')
         # print("SMA : {}".format(self.sma_val))
 
+        # LED
         led_duration = curr_t - self.led_start_t
-        if led_duration <= 2.0:
+        if led_duration <= self.led_ru:
             for i in range(self.led_num):
-                self.led_val[i] = led_duration / 2.0
+                self.led_val[i] = led_duration / self.led_ru
+        elif led_duration <= self.led_ho:
+            for i in range(self.led_num):
+                self.led_val[i] = 1
+        elif led_duration <= self.led_rd:
+            t = led_duration - self.led_ho - self.led_ru
+            value = 1 - (t / self.led_rd)
+            for i in range(self.led_num):
+                self.led_val[i] = value
         else:
             for i in range(self.led_num):
                 self.led_val[i] = 0
             self.led_act = False
+            self.update_para_from_buffer('led')
 
         # print("LED : {}".format(self.led_val))
 
+        # Moth here
+        # ---------
         return self.led_val, self.sma_val #self.moth_val
 
     def activate(self, act_type):
@@ -189,10 +251,24 @@ class Behaviour:
 
         self.propagation_list = list()
 
+        self.n_gap = 1
+        self.t_sma = 5
+
         print("Behaviour initialized.")
 
+    def set_parameter(self, para):
+        '''
+
+        :param para:[led_ru, led_ho, led_rd, moth_ru, moth_ho, moth_rd, I_max, ml_gap, sma_gap, n_gap, t_sma]
+        '''
+
+        self.n_gap = para[9]
+        self.t_sma = para[10]
+        for node in self.sculpture.node_list:
+            node.set_parameters(para[0:9])
+
     def step(self, observation):
-        # update system by one step
+        # Produce actions of all actuators for one step
 
         # <state transition>
         for obs in observation:
@@ -201,7 +277,7 @@ class Behaviour:
                 self.state_timer = time.time()
                 break
 
-        if self.state == 'active' and time.time() - self.state_timer > 10:
+        if self.state == 'active' and time.time() - self.state_timer > 10 and len(self.propagation_list) == 0:
             print("Enter Idle state.")
             self.state = 'idle'
         # <end of state transition>
@@ -209,7 +285,7 @@ class Behaviour:
         print("\n{} Step ----------".format(self.state))
         if self.state == 'idle':
             # randomly select one node
-            if time.time() - self.idle_timer > 1:
+            if time.time() - self.idle_timer > self.t_sma:
                 self.idle_timer = time.time()
 
                 rand_idx = np.random.randint(0, self.sculpture.num_nodes)
@@ -227,7 +303,7 @@ class Behaviour:
 
             # activate the nodes for propagation
             if len(self.propagation_list) > 0:
-                if time.time()-self.propagate_timer > 1:
+                if time.time()-self.propagate_timer > self.n_gap:
                     self.propagate_timer = time.time()
                     print("Propagation list {}".format(self.propagation_list))
                     for node in self.propagation_list[0]:
@@ -241,7 +317,7 @@ class Behaviour:
         return action
 
     def create_propagation_list(self, node_index):
-        # find location
+        # find starting location
         start_point = -1
         for i in range(len(self.sculpture.chain)):
             if node_index in self.sculpture.chain[i]:
@@ -249,6 +325,7 @@ class Behaviour:
                 break
         assert start_point >= 0, "No starting point found for propagation."
 
+        # create list
         p_list = list()
         i = 1
         while True:
@@ -266,14 +343,14 @@ class Behaviour:
 
 
 if __name__ == '__main__':
-    ROM_sculpture = Sculpture(node_num=4, sma_num=2, led_num=1, moth_num=1)
+    ROM_sculpture = Sculpture(node_num=10, sma_num=2, led_num=1, moth_num=1)
     behaviour = Behaviour(ROM_sculpture)
 
     for i in range(1000):
         observation = np.array([0,0,0,0])
-        if i % 20 == 19:
+        if i % 30 == 29:
             observation = np.array([0,0,1,0])
 
-        action =behaviour.step(observation)
+        action = behaviour.step(observation)
         print(action)
         time.sleep(0.2)
