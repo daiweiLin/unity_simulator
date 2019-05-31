@@ -24,8 +24,7 @@ This will run simulation in the Unity executables. The simulation usually is fas
    2. Prescripted Behaviour: `Prescripted_behaviour.py`
 
 ### Interaction paradigm and Simulator
-NEED UPDATE THE PIC HERE
-<img src="https://github.com/UWaterloo-ASL/LAS_Gym/blob/master/InitialDesignIdeas/DesignFigures/WholePacture_Distributed_IntrinsicMotivation.png" width="400" height="400" />       <img src="https://github.com/UWaterloo-ASL/LAS_Gym/blob/master/InitialDesignIdeas/DesignFigures/LAS_Simulator.png" width="400" height="400" /> 
+<img src="https://github.com/daiweiLin/unity_simulator/blob/master/InitialDesignIdeas/DesignFigures/Interaction%20Diagram.png" /> 
 
 ## Dependency
    1. OpenAI baseline
