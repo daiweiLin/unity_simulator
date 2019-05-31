@@ -90,7 +90,7 @@ if __name__ == '__main__':
     behaviour = Behaviour(ROM_sculpture)
 
     # initialize ml agent
-    os.environ['OPENAI_LOGDIR'] = "F:\\LAS_Gym\\train_log"
+    os.environ['OPENAI_LOGDIR'] = "F:\\unity_simulator\\unity_simulator\\train_log"
     os.environ['OPENAI_LOG_FORMAT'] = 'stdout,tensorboard'
 
     agent = BaselineAgent('Baseline_Agent', observation_dim=24, action_dim=11, env=env, env_type='Unity',
