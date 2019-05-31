@@ -40,15 +40,15 @@ class Node:
         self.led_start_t = 0.0
         self.moth_start_t = 0.0
 
-        self.sma_val = [0.0]*sma_num
-        self.led_val = [0.0]*led_num
-        self.moth_val = [0.0]*moth_num
+        self.sma_val = [0.0] * sma_num
+        self.led_val = [0.0] * led_num
+        self.moth_val = [0.0] * moth_num
 
         # ====================#
         # Tunable parameters  #
         # ====================#
         self.para_length = 10
-        self.para_buffer = [None]*10
+        self.para_buffer = [None] * 10
         if para is not None:
             self.led_ru = para['led_ru']
             self.led_ho = para['led_ho']
@@ -168,7 +168,7 @@ class Node:
 
         # Moth here
         # ---------
-        return self.led_val, self.sma_val #self.moth_val
+        return self.led_val, self.sma_val  # self.moth_val
 
     def activate(self, act_type):
         # start timer
@@ -208,8 +208,8 @@ class Sculpture:
         # create a chain that defines the structure of sculpture
         # Used in propagation
         self.chain = list()
-        for i in range(int(node_num/2)):
-            self.chain.append([2*i, 2*i+1])
+        for i in range(int(node_num / 2)):
+            self.chain.append([2 * i, 2 * i + 1])
 
     def sculpture_step(self):
         '''
@@ -254,6 +254,10 @@ class Behaviour:
         self.n_gap = 1
         self.t_sma = 5
 
+        self.time_scale = 10 / 15.5
+        self.para_mapping_scale = np.array([5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 1.0, 5.0, 5.0, 5.0, 4.0]) * np.array(
+                                            [1, 1, 1, 1, 1, 1, 1, self.time_scale, self.time_scale, self.time_scale, self.time_scale])
+        self.para_mapping_offset = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
         print("Behaviour initialized.")
 
     def set_parameter(self, para):
@@ -262,6 +266,7 @@ class Behaviour:
         :param para:[led_ru, led_ho, led_rd, moth_ru, moth_ho, moth_rd, I_max, ml_gap, sma_gap, n_gap, t_sma]
         '''
 
+        para = para * self.para_mapping_scale + self.para_mapping_offset
         self.n_gap = para[9]
         self.t_sma = para[10]
         for node in self.sculpture.node_list:
@@ -282,7 +287,7 @@ class Behaviour:
             self.state = 'idle'
         # <end of state transition>
 
-        print("\n{} Step ----------".format(self.state))
+        # print("\n{} Step ----------".format(self.state))
         if self.state == 'idle':
             # randomly select one node
             if time.time() - self.idle_timer > self.t_sma:
@@ -303,14 +308,13 @@ class Behaviour:
 
             # activate the nodes for propagation
             if len(self.propagation_list) > 0:
-                if time.time()-self.propagate_timer > self.n_gap:
+                if time.time() - self.propagate_timer > self.n_gap:
                     self.propagate_timer = time.time()
-                    print("Propagation list {}".format(self.propagation_list))
+                    # print("Propagation list {}".format(self.propagation_list))
                     for node in self.propagation_list[0]:
                         print("(ACTIVE)(P)Activate {} on node{}".format(['led', 'sma', 'moth'], node))
                         self.sculpture.activate_local_reflex(node, ['led', 'sma', 'moth'])
                     self.propagation_list.pop(0)
-
 
         action = self.sculpture.sculpture_step()
         # print("action = {}".format(action))
@@ -329,12 +333,12 @@ class Behaviour:
         p_list = list()
         i = 1
         while True:
-            if node_index-i >= 0 and node_index+i <= self.sculpture.num_nodes-1:
-                p_list.append([node_index-i, node_index+i])
-            elif node_index-i >= 0:
-                p_list.append([node_index-i])
-            elif node_index+i <= self.sculpture.num_nodes-1:
-                p_list.append([node_index+i])
+            if node_index - i >= 0 and node_index + i <= self.sculpture.num_nodes - 1:
+                p_list.append([node_index - i, node_index + i])
+            elif node_index - i >= 0:
+                p_list.append([node_index - i])
+            elif node_index + i <= self.sculpture.num_nodes - 1:
+                p_list.append([node_index + i])
             else:
                 break
             i += 1
@@ -347,9 +351,9 @@ if __name__ == '__main__':
     behaviour = Behaviour(ROM_sculpture)
 
     for i in range(1000):
-        observation = np.array([0,0,0,0])
+        observation = np.array([0, 0, 0, 0])
         if i % 30 == 29:
-            observation = np.array([0,0,1,0])
+            observation = np.array([0, 0, 1, 0])
 
         action = behaviour.step(observation)
         print(action)

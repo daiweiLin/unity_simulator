@@ -59,7 +59,7 @@ if __name__ == '__main__':
     # 3. Start the environment
     #    interact_with_app == True: interact with application
     #    interact_with_app == False: interact with Unity scene starting by click play in Unity
-    interact_with_app = False
+    interact_with_app = True
     if interact_with_app == True:
         env = UnityEnvironment(file_name=env_name, seed=1)
     else:
@@ -93,7 +93,6 @@ if __name__ == '__main__':
     os.environ['OPENAI_LOGDIR'] = "F:\\LAS_Gym\\train_log"
     os.environ['OPENAI_LOG_FORMAT'] = 'stdout,tensorboard'
 
-    # env_obs_convert = np.array([1 / 3.15, 1 / 3.15, 1 / 3.15, 1 / 4, 1 / 4, 1 / 4, 1 / 10, 1 / 10])
     agent = BaselineAgent('Baseline_Agent', observation_dim=24, action_dim=11, env=env, env_type='Unity',
                           load_pretrained_agent_flag=False)
 
@@ -101,31 +100,23 @@ if __name__ == '__main__':
     env_info = env.reset(train_mode=train_mode)
     done = False
     reward = 0
-    observation = env_info['LASBrain'].vector_observations[0] # * env_obs_convert
+    observation = env_info['LASBrain'].vector_observations[0]
 
-
-    for episode in range(100):
+    for _ in range(agent.nb_epochs*agent.nb_epoch_cycles*agent.nb_rollout_steps - 1):
         env_info = env.reset(train_mode=train_mode)
-        done = False
-        episode_rewards = 0
-        while not done:
-            # action = {'brain1':[1.0, 2.0], 'brain2':[3.0,4.0]}
-            para_action = agent.interact(observation, reward, done)
-            behaviour.set_parameter(para_action)
-            take_action_flag = 1 # To match with Adam's code
-            LAS_action = behaviour.step(env_info['LASBrain'].vector_observations[0])
-            LAS_action = LAS_action + [take_action_flag]
-            # print("LAS Action:{}".format(LAS_action))
-            Visitor_action = visitor_behavior(env_info['VisitorBrain'].vector_observations[0], node_number=24)
-            # LAS_action = np.ones(brain.vector_action_space_size[0])*0.1
-            action = {brain.brain_name: LAS_action, 'VisitorBrain': Visitor_action}
-            # print("LED_Action: {}".format(LAS_action[:24]))
-            env_info = env.step(action)
 
-            episode_rewards += env_info[brain.brain_name].rewards[0]
-            done = env_info[brain.brain_name].local_done[0]
+        para_action = agent.interact(observation, reward, done)
+        behaviour.set_parameter(para_action)
+        take_action_flag = 1 # To match with Adam's code
+        LAS_action = behaviour.step(observation)
+        LAS_action = LAS_action + [take_action_flag]
+        # print("LAS Action:{}".format(LAS_action))
+        Visitor_action = visitor_behavior(env_info['VisitorBrain'].vector_observations[0], node_number=24)
+        # LAS_action = np.ones(brain.vector_action_space_size[0])*0.1
+        action = {'LASBrain': LAS_action, 'VisitorBrain': Visitor_action}
+        # print("LED_Action: {}".format(LAS_action[:24]))
+        env_info = env.step(action)
 
-        print("Total reward of episode {}: {}".format(episode, episode_rewards))
-
-    # 6. Close the environment when finished
-    # env.close()
+        reward = env_info['LASBrain'].rewards[0]
+        observation = env_info['LASBrain'].vector_observations[0]
+        done = env_info['LASBrain'].local_done[0]

@@ -30,7 +30,7 @@ import numpy as np
 
 class LASBaselineAgent:
     def __init__(self, agent_name, observation_dim, action_dim, num_observation=20, env=None, load_pretrained_agent_flag=False ):
-        self.baseline_agent = BaselineAgent(agent_name, observation_dim, action_dim, env, load_pretrained_agent_flag)
+        self.baseline_agent = BaselineAgent(agent_name, observation_dim, action_dim, env, 'V-REP', load_pretrained_agent_flag)
         self.internal_env = InternalEnvironment(observation_dim, action_dim, num_observation)
 
     def feed_observation(self,observation):
@@ -164,9 +164,11 @@ class BaselineAgent:
             self.action_space = spaces.Box(act_min, act_max, dtype=np.float32)
         else:
             self.env = env
+            self.env_type = env_type
             if env_type == 'VREP':
                 self.action_space = env.action_space
                 self.observation_space = env.observation_space
+
             elif env_type == 'Unity':
                 obs_max = np.array([1.] * observation_dim)
                 obs_min = np.array([-1] * observation_dim)
@@ -356,15 +358,14 @@ class BaselineAgent:
 
             # Execute next action.
 
-
-            # scale for execution in env (as far as DDPG is concerned, every action is in [-1, 1])
-            # if self.rollout_step_cnt == self.nb_rollout_steps - 1:
-            #     done = True
             self.t += 1
 
-            self.episode_reward += reward  # <<<<<<<<<<<<<<<<<<<<<<<<
+            self.episode_reward += reward
             self.episode_step += 1
+            self.rollout_step_cnt += 1
 
+            if self.rollout_step_cnt >= self.nb_rollout_steps:
+                done = True
 
             # Book-keeping.
             self.epoch_actions.append(action)
@@ -373,11 +374,13 @@ class BaselineAgent:
             #       reward correspond to observation
             if self.action is not None:
                 self.agent.store_transition(self.prev_observation, self.action, reward, observation, done)
+
+            self._save_log(self.log_dir,
+                           [datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), self.prev_observation, self.action, reward])
             self.action = action
             self.reward = reward
             self.prev_observation = observation
 
-            self._save_log(self.log_dir,[datetime.datetime.now().strftime("%Y%m%d-%H%M%S"),self.prev_observation, self.action, reward])
 
             # Logging the training reward info for debug purpose
             if done:
@@ -391,13 +394,14 @@ class BaselineAgent:
                 self.epoch_episodes += 1
                 self.episodes += 1
 
-                self.agent.reset()
-                if self.env is not None:
-                    obs = self.env.reset()
+                self.agent.reset() # <<<<???? not sure
+                # For simulation on unity, no reset needed. Because the simulation is to simulate ROM experiment.
+                # if self.env is not None:
+                #     obs = self.env.reset()
 
-            self.rollout_step_cnt += 1
+
             # Training
-            # Everytime interact() is called, it will train the model by nb_train_steps times
+            # At the end of rollout(nb_rollout_steps), it will train the model by nb_train_steps times
             if self.rollout_step_cnt >= self.nb_rollout_steps:
 
                 self.epoch_actor_losses = []
@@ -417,9 +421,9 @@ class BaselineAgent:
                 self.rollout_step_cnt = 0
                 self.epoch_cycle_cnt += 1
 
-            #==============#
-            # Create stats #
-            #==============#
+            #==========================#
+            # Create stats every epoch #
+            #==========================#
             if self.epoch_cycle_cnt >= self.nb_epoch_cycles:
                 # rank = MPI.COMM_WORLD.Get_rank()
                 mpi_size = MPI.COMM_WORLD.Get_size()
@@ -428,7 +432,7 @@ class BaselineAgent:
                 duration = time.time() - self.start_time
                 stats = self.agent.get_stats()
                 combined_stats = stats.copy()
-                combined_stats['rollout/return'] = np.mean(self.epoch_episode_rewards)
+                combined_stats['rollout/return'] = np.sum(self.epoch_episode_rewards)
                 combined_stats['rollout/return_history'] = np.mean(self.episode_rewards_history)
                 combined_stats['rollout/episode_steps'] = np.mean(self.epoch_episode_steps)
                 combined_stats['rollout/actions_mean'] = np.mean(self.epoch_actions)
@@ -463,9 +467,9 @@ class BaselineAgent:
                 logger.dump_tabular()
                 logger.info('')
 
-
                 self.epoch_cycle_cnt = 0
                 self.epoch_cnt += 1
+                self.epoch_episode_rewards = []
             #===================#
             # Stop the learning #
             #===================#
@@ -536,7 +540,7 @@ class BaselineAgent:
         parser.add_argument('--nb-epoch-cycles', type=int, default=10)
         parser.add_argument('--nb-train-steps', type=int, default=20)  # per epoch cycle and MPI worker
         parser.add_argument('--nb-eval-steps', type=int, default=100)  # per epoch cycle and MPI worker
-        parser.add_argument('--nb-rollout-steps', type=int, default=10)  # per epoch cycle and MPI worker  default 50
+        parser.add_argument('--nb-rollout-steps', type=int, default=50)  # per epoch cycle and MPI worker  default 50
         parser.add_argument('--noise-type', type=str,
                             default='adaptive-param_0.2')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
         parser.add_argument('--num-timesteps', type=int, default=None)
@@ -557,8 +561,12 @@ class BaselineAgent:
         """
         # if using the simulator
         if self.env is not None:
-            print("close connection to simulator")
-            self.env.close_connection()
+            if self.env_type == "V-REP":
+                print("close connection to V-REP simulator")
+                self.env.close_connection()
+            else:
+                print("close Unity.")
+                self.env.close()
 
         # save the model
         self._save_model(self.model_dir)
