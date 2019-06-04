@@ -30,7 +30,7 @@ def visitor_behavior(observation, node_number):
         visitor_action = [x[random], y[random]]
         # print("visitor find light at {}".format(visitor_action))
     elif len(x) == 1:
-        visitor_action = [x[0],y[0]]
+        visitor_action = [x[0], y[0]]
         # print("visitor find light at {}".format(visitor_action))
 
     return visitor_action
@@ -93,8 +93,10 @@ if __name__ == '__main__':
     os.environ['OPENAI_LOGDIR'] = "F:\\unity_simulator\\unity_simulator\\train_log"
     os.environ['OPENAI_LOG_FORMAT'] = 'stdout,tensorboard'
 
-    agent = BaselineAgent('Baseline_Agent', observation_dim=24, action_dim=11, env=env, env_type='Unity',
-                          load_pretrained_agent_flag=False)
+    agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=11, num_observation=10,
+                             env=env, env_type='Unity', load_pretrained_agent_flag=False)
+    # agent = BaselineAgent('Baseline_Agent', observation_dim=24, action_dim=11, env=env, env_type='Unity',
+    #                       load_pretrained_agent_flag=False)
 
     print("Learning:")
     env_info = env.reset(train_mode=train_mode)
@@ -102,17 +104,29 @@ if __name__ == '__main__':
     reward = 0
     observation = env_info['LASBrain'].vector_observations[0]
 
-    for _ in range(agent.nb_epochs*agent.nb_epoch_cycles*agent.nb_rollout_steps - 1):
+    take_action_flag = 1 # switch for debugging
+    total_steps = agent.baseline_agent.nb_epochs*agent.baseline_agent.nb_epoch_cycles*agent.baseline_agent.nb_rollout_steps
+    s = 0
+    while s <= total_steps - 1:
         env_info = env.reset(train_mode=train_mode)
 
-        para_action = agent.interact(observation, reward, done)
-        behaviour.set_parameter(para_action)
-        take_action_flag = 1 # To match with Adam's code
+        # para_action = agent.interact(observation, reward, done)
+        take_para_action_flag, para_action = agent.feed_observation(observation)
+        if take_para_action_flag:
+            behaviour.set_parameter(para_action)
+            s += 1
+            print('s={}'.format(s))
+
         LAS_action = behaviour.step(observation)
         LAS_action = LAS_action + [take_action_flag]
         # print("LAS Action:{}".format(LAS_action))
+
+        # action = agent.interact(observation, reward, done)
+        # take_action_flag = 1
+        # LAS_action = action.tolist() + [take_action_flag]
+
         Visitor_action = visitor_behavior(env_info['VisitorBrain'].vector_observations[0], node_number=24)
-        # LAS_action = np.ones(brain.vector_action_space_size[0])*0.1
+
         action = {'LASBrain': LAS_action, 'VisitorBrain': Visitor_action}
         # print("LED_Action: {}".format(LAS_action[:24]))
         env_info = env.step(action)

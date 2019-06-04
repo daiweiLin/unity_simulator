@@ -295,14 +295,14 @@ class Behaviour:
 
                 rand_idx = np.random.randint(0, self.sculpture.num_nodes)
                 rand_actuator = np.random.choice(['led', 'sma'], 1)[0]
-                print("(IDLE)Activate {} on node{}".format(rand_actuator, rand_idx))
+                # print("(IDLE)Activate {} on node{}".format(rand_actuator, rand_idx))
                 self.sculpture.activate_local_reflex(rand_idx, [rand_actuator])
         else:
             # actuate at the triggered node and propagate
             trigger_nodes = observation > 0
             for idx in range(len(observation)):
                 if trigger_nodes[idx]:
-                    print("(ACTIVE)Activate {} on node{}".format(['led', 'sma', 'moth'], idx))
+                    # print("(ACTIVE)Activate {} on node{}".format(['led', 'sma', 'moth'], idx))
                     self.sculpture.activate_local_reflex(idx, ['led', 'sma', 'moth'])
                     self.create_propagation_list(idx)
 
@@ -312,7 +312,7 @@ class Behaviour:
                     self.propagate_timer = time.time()
                     # print("Propagation list {}".format(self.propagation_list))
                     for node in self.propagation_list[0]:
-                        print("(ACTIVE)(P)Activate {} on node{}".format(['led', 'sma', 'moth'], node))
+                        # print("(ACTIVE)(P)Activate {} on node{}".format(['led', 'sma', 'moth'], node))
                         self.sculpture.activate_local_reflex(node, ['led', 'sma', 'moth'])
                     self.propagation_list.pop(0)
 

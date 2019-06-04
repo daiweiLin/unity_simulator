@@ -29,8 +29,8 @@ import numpy as np
 
 
 class LASBaselineAgent:
-    def __init__(self, agent_name, observation_dim, action_dim, num_observation=20, env=None, load_pretrained_agent_flag=False ):
-        self.baseline_agent = BaselineAgent(agent_name, observation_dim, action_dim, env, 'V-REP', load_pretrained_agent_flag)
+    def __init__(self, agent_name, observation_dim, action_dim, num_observation=20, env=None, env_type='Unity', load_pretrained_agent_flag=False ):
+        self.baseline_agent = BaselineAgent(agent_name, observation_dim, action_dim, env, env_type, load_pretrained_agent_flag)
         self.internal_env = InternalEnvironment(observation_dim, action_dim, num_observation)
 
     def feed_observation(self,observation):
@@ -55,13 +55,15 @@ class LASBaselineAgent:
         ------------------------------------------------------------------
 
         """
+        take_action_flag = 0
+
         is_new_observation, filtered_observation, reward = self.internal_env.feed_observation(observation)
         if is_new_observation:
             action = self.baseline_agent.interact(filtered_observation, reward, done=False)
-            take_action_flag, action = self.internal_env.take_action(action)
+            take_action_flag = 1
             return take_action_flag, action
         else:
-            return False,[]
+            return take_action_flag, []
 
     def stop(self):
         self.baseline_agent.stop()
@@ -97,12 +99,12 @@ class InternalEnvironment:
             self.observation_cnt = 0
             # self.flt_prev_observation = self.flt_observation
             flt_observation = self._filter(self.observation_group)
-            is_new_observation = True
+            is_new_observation = 1
 
             reward = self._cal_reward(flt_observation)
 
         else:
-            is_new_observation = False
+            is_new_observation = 0
 
         return is_new_observation, flt_observation, reward
 
@@ -536,8 +538,8 @@ class BaselineAgent:
         parser.add_argument('--gamma', type=float, default=0.99)
         parser.add_argument('--reward-scale', type=float, default=1.)
         parser.add_argument('--clip-norm', type=float, default=None)
-        parser.add_argument('--nb-epochs', type=int, default=500)  # with default settings (500), perform 1M steps total
-        parser.add_argument('--nb-epoch-cycles', type=int, default=10)
+        parser.add_argument('--nb-epochs', type=int, default=2000)  # with default settings (500), perform 1M steps total
+        parser.add_argument('--nb-epoch-cycles', type=int, default=2)
         parser.add_argument('--nb-train-steps', type=int, default=20)  # per epoch cycle and MPI worker
         parser.add_argument('--nb-eval-steps', type=int, default=100)  # per epoch cycle and MPI worker
         parser.add_argument('--nb-rollout-steps', type=int, default=50)  # per epoch cycle and MPI worker  default 50
