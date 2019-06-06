@@ -1,7 +1,7 @@
 # Sharcnet Installation Instructions
 This is the instructions on how to install Unity ML Toolkits on Sharcnet.
 
-## Create virtual environment and install Tensorflow 1.7
+## 1. Create virtual environment and install Tensorflow 1.7
 [Reference of sharknet](https://docs.computecanada.ca/wiki/TensorFlow)
 
 As ML toolkits use python 3.6, load python 3.6 first
@@ -22,14 +22,14 @@ Install Tensorflow 1.7, this is a version customized by computecanada:
 ```
 After installation is complete, if you run `python -c "import tensorflow as tf; print(tf.__version__)"`, you will see `1.7.0`
 
-## Download Unity's Toolkit 
+## 2. Download Unity's Toolkit 
 [Installation Reference from Unity's ML Toolkits](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Installation.md)
 
 Clone repository:
 ```
 git clone https://github.com/Unity-Technologies/ml-agents.git
 ```
-## Manual Install
+## 3. Manual Install
 As ml-agent only works for tensorflow 1.7, and the version number installed in this case is `1.7.0+computecanada`, the setup file cannot find tensorflow properly. So we comment out the version check from `setup.py`
 
 Go to the ml-agents/ml-agents and open setup.py:
