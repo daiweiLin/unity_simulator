@@ -39,7 +39,7 @@ def visitor_behavior(observation, node_number, visitor_number):
         visitor_action = [x[0], y[0]] * visitor_number
         # print("visitor find light at {}".format(visitor_action))
     else:
-        visitor_action = np.random.uniform(low=-1, high=1, size=visitor_number*2) * np.array([20, 10]*visitor_number)
+        visitor_action = np.random.uniform(low=-1, high=1, size=visitor_number*2) * np.array([12.5, 7.5]*visitor_number)
 
     return visitor_action
 

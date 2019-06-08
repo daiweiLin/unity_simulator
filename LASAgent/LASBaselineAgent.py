@@ -7,6 +7,10 @@ import pickle
 import csv
 from collections import deque
 
+from gym import spaces
+import tensorflow as tf
+from mpi4py import MPI
+import numpy as np
 
 from baselines.ddpg.ddpg import DDPG
 import baselines.common.tf_util as U
@@ -20,12 +24,7 @@ from baselines.ddpg.models import Actor, Critic
 from baselines.ddpg.memory import Memory
 from baselines.ddpg.noise import *
 
-import gym
-from gym import spaces
-import tensorflow as tf
-from mpi4py import MPI
 
-import numpy as np
 
 
 class LASBaselineAgent:

@@ -18,7 +18,7 @@ from LASAgent.LASBaselineAgent import *
 
 def visitor_behavior(observation, node_number):
     # print("visitor observation: {}".format(observation))
-    visitor_action = np.random.uniform(low=-1, high=1, size=2)*np.array([20, 10])
+    visitor_action = np.random.uniform(low=-1, high=1, size=2)*np.array([12.5, 7.5])
     x = []
     y = []
     for i in range(node_number):
@@ -90,7 +90,10 @@ if __name__ == '__main__':
     behaviour = Behaviour(ROM_sculpture)
 
     # initialize ml agent
-    os.environ['OPENAI_LOGDIR'] = "F:\\unity_simulator\\unity_simulator\\train_log"
+    summary_path = os.path.join(os.path.abspath('..'), 'save', 'summary')
+    if not os.path.exists(summary_path):
+        os.makedirs(summary_path)
+    os.environ['OPENAI_LOGDIR'] = summary_path
     os.environ['OPENAI_LOG_FORMAT'] = 'stdout,tensorboard'
 
     agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=11, num_observation=10,
@@ -108,14 +111,14 @@ if __name__ == '__main__':
     total_steps = agent.baseline_agent.nb_epochs*agent.baseline_agent.nb_epoch_cycles*agent.baseline_agent.nb_rollout_steps
     s = 0
     while s <= total_steps - 1:
-        env_info = env.reset(train_mode=train_mode)
+        # env_info = env.reset(train_mode=train_mode)
 
         # para_action = agent.interact(observation, reward, done)
         take_para_action_flag, para_action = agent.feed_observation(observation)
         if take_para_action_flag:
             behaviour.set_parameter(para_action)
             s += 1
-            print('s={}'.format(s))
+            # print('s={}'.format(s))
 
         LAS_action = behaviour.step(observation)
         LAS_action = LAS_action + [take_action_flag]
