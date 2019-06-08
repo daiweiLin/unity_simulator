@@ -1,6 +1,11 @@
 # LAS_Unity
 Living Architecture System simulated environment with Unity's [Machine Learning Toolkits](https://github.com/Unity-Technologies/ml-agents).
-
+## Installation
+Refer to Unity's instructions: https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Installation.md
+If you want to install old versions of toolkits instead of the latest version, v0.6 for example, do following instead
+```
+pip install mlagents=0.6.0
+```
 ## To run the simulating environment
 ### Method 1: Inside Unity editor
 1. When initialize the `env` object, set `file_name=None`
