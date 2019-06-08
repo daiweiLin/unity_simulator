@@ -22,13 +22,16 @@ Install Tensorflow 1.7, this is a version customized by computecanada:
 ```
 After installation is complete, if you run `python -c "import tensorflow as tf; print(tf.__version__)"`, you will see `1.7.0`
 
-## 2. Download Unity's Toolkit 
+## 2. Download Unity's Toolkit (version 0.6)
 [Installation Reference from Unity's ML Toolkits](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Installation.md)
 
-Clone repository:
+Clone repository and checkout the old version:
 ```
 git clone https://github.com/Unity-Technologies/ml-agents.git
+cd ml-agents
+git checkout 3b77fe9f9194ca504f57c1151c64c884d7d3f025
 ```
+Note: The version `3b77fe9f9194ca504f57c1151c64c884d7d3f025` is published on Feb 5th, 2019. See https://github.com/Unity-Technologies/ml-agents/commits for commit histories.
 ## 3. Manual Install
 As ml-agent only works for tensorflow 1.7, and the version number installed in this case is `1.7.0+computecanada`, the setup file cannot find tensorflow properly. So we comment out the version check from `setup.py`
 
@@ -53,13 +56,13 @@ install_requires=[
     'grpcio>=1.11.0,<1.12.0',
     'pypiwin32==223;platform_system=="Windows"'],
 ```
-Save and close the file. Then go to the parent folder `ml-agents`. For each folder `ml-agents`,`ml-agents-envs`,`gym-unity`, install manually.
+Save and close the file. Then go to the parent folder `ml-agents`. For each folder `ml-agents`,`gym-unity`, install manually.
 ```
 cd ml-agents
-pip install -e ./
-cd ml-agents-envs
 pip install -e ./
 cd ..
 cd gym-unity
 pip install -e ./
 ```
+## 4. Install Baselines
+See [here](https://github.com/UWaterloo-ASL/ML_lite/blob/master/README.md) for installation detail
