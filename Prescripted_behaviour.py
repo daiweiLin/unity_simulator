@@ -75,8 +75,8 @@ class Node:
 
     def set_parameters(self, para):
         """
-        Set tunable parameters. If the actuator is being used, the parameters will be updated after
-        the actions are complete
+        Set tunable parameters. If the actuator is being used, the parameters will be saved in the buffer, which will be
+        used later after actions are complete.
         :param para: an array [led_ru, led_ho, led_rd, moth_ru, moth_ho, moth_rd, I_max, ml_gap, sma_gap]
         """
         # LED
@@ -127,7 +127,7 @@ class Node:
 
     def node_step(self):
         """
-        Perform one step of one node and returns actions
+        Perform one step of one node and returns actuators actions of the node
         :return: led*num_led, sma*num_sma
         """
 
@@ -242,7 +242,7 @@ class Sculpture:
 
 
 class Behaviour:
-    def __init__(self, sculpture):
+    def __init__(self, sculpture, system_freq=10):
         self.state = 'idle'  # either idle or active
         self.sculpture = sculpture
         self.state_timer = time.time()
@@ -254,7 +254,7 @@ class Behaviour:
         self.n_gap = 1
         self.t_sma = 5
 
-        self.time_scale = 10 / 15.5
+        self.time_scale = 10 / system_freq
         self.para_mapping_scale = np.array([5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 1.0, 5.0, 5.0, 5.0, 4.0]) * np.array(
                                             [1, 1, 1, 1, 1, 1, 1, self.time_scale, self.time_scale, self.time_scale, self.time_scale])
         self.para_mapping_offset = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])

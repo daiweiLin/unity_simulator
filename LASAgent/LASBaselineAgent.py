@@ -28,8 +28,8 @@ from baselines.ddpg.noise import *
 
 
 class LASBaselineAgent:
-    def __init__(self, agent_name, observation_dim, action_dim, num_observation=20, env=None, env_type='Unity', load_pretrained_agent_flag=False ):
-        self.baseline_agent = BaselineAgent(agent_name, observation_dim, action_dim, env, env_type, load_pretrained_agent_flag)
+    def __init__(self, agent_name, observation_dim, action_dim, num_observation=20, env=None, env_type='Unity', load_pretrained_agent_flag=False, save_dir=None):
+        self.baseline_agent = BaselineAgent(agent_name, observation_dim, action_dim, env, env_type, load_pretrained_agent_flag, save_dir)
         self.internal_env = InternalEnvironment(observation_dim, action_dim, num_observation)
 
     def feed_observation(self,observation):
@@ -133,7 +133,7 @@ class InternalEnvironment:
 
 
 class BaselineAgent:
-    def __init__(self, agent_name, observation_dim, action_dim, env=None, env_type='VREP', load_pretrained_agent_flag=False ):
+    def __init__(self, agent_name, observation_dim, action_dim, env=None, env_type='VREP', load_pretrained_agent_flag=False, save_dir=None):
 
         self.name = agent_name
         #=======================================#
@@ -279,8 +279,13 @@ class BaselineAgent:
         #========================#
         # Model saving           #
         #========================#
-        self.model_dir = os.path.join(os.path.abspath('..'), 'save','model')
-        self.log_dir = os.path.join(os.path.abspath('..'), 'save','log')
+        if save_dir is not None:
+            self.model_dir = os.path.join(save_dir, 'model')
+            self.log_dir = os.path.join(save_dir, 'log')
+        else:
+            self.model_dir = os.path.join(os.path.abspath('.'), 'save', 'model')
+            self.log_dir = os.path.join(os.path.abspath('.'), 'save', 'log')
+
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
         if not os.path.exists(self.log_dir):
@@ -295,6 +300,7 @@ class BaselineAgent:
 
         self.agent.initialize(self.sess)
         self.saver = tf.train.Saver()
+
         if load_pretrained_agent_flag == True:
             self._load_model(self.model_dir)
 
