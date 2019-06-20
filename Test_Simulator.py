@@ -46,7 +46,7 @@ def LAS_behavior(p, action_dimension):
         return np.zeros(action_dimension)
 
 
-def init(mode, num_visitors, unity_dir, interact_with_app=True, save_dir=None):
+def init(mode, num_visitors, unity_dir, no_graphics=False, interact_with_app=True, save_dir=None):
 
     env_name = unity_dir
     # Start the environment
@@ -54,7 +54,7 @@ def init(mode, num_visitors, unity_dir, interact_with_app=True, save_dir=None):
     #    interact_with_app == False: interact with Unity scene starting by click play in Unity
 
     if interact_with_app == True:
-        env = UnityEnvironment(file_name=env_name, seed=1, no_graphics=False)
+        env = UnityEnvironment(file_name=env_name, seed=1, no_graphics=no_graphics)
     else:
         env = UnityEnvironment(file_name=None, seed=1)
 
@@ -186,9 +186,23 @@ def run(mode, behaviour, visitors_behaviour):
 if __name__ == '__main__':
 
     train_mode = True  # Whether to run the environment in training or inference mode
-    learning_mode = 'PLA' # 'SARA', 'PLA'
-    n_visitors = 5
-    interact_with_app = False
+    learning_mode = 'PLA'  # 'SARA', 'PLA'
+    n_visitors = 1
+
+    is_sharcnet = False
+
+    if is_sharcnet:
+        interact_with_app = True
+        no_graphics = True
+        if n_visitors > 1:
+            unity_dir = 'unity_executable/multi_visitor/LAS_Simulator'
+        else:
+            unity_dir = 'unity_executable/single_visitor/LAS_Simulator'
+    else:
+        interact_with_app = False
+        no_graphics = False
+        unity_dir = 'LAS-Scenes/Unity/LAS_Simulator'
+
     date = datetime.datetime.today().strftime('%Y-%m-%d-%H%M%S')
     save_dir = os.path.join(os.path.abspath('.'), 'save', learning_mode, date)
 
@@ -196,6 +210,7 @@ if __name__ == '__main__':
     print("training_mode={}, learning_mode={}, number_of_visitors={}, interact_with_app={}".format(train_mode, learning_mode, n_visitors, interact_with_app))
 
     env, visitors_bh, agent, bh = init(mode=learning_mode, num_visitors=n_visitors,
-                                       unity_dir='LAS-Scenes/Unity/LAS_Simulator', interact_with_app=interact_with_app,
+                                       unity_dir=unity_dir, no_graphics=no_graphics,
+                                       interact_with_app=interact_with_app,
                                        save_dir=save_dir)
     run(mode=learning_mode, behaviour=bh, visitors_behaviour=visitors_bh)

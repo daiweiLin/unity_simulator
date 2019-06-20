@@ -106,4 +106,9 @@ cs885project.ipynb
 .idea/vcs.xml
 .idea/workspace.xml
 *.iml
+
+# Manually ignore big files
 LAS-Scenes/Unity_Linux/LAS_Simulator.x86_64
+save/**/*.csv
+SHARCNET/Results/**/*.csv
+

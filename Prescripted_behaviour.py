@@ -8,23 +8,6 @@ import time
 import numpy as np
 import math
 
-'''
-class Actuator:
-    def __init__(self, act_type):
-        assert act_type in ['sma','led','moth'], "Invalid acuator type {}, must be {}".format(act_type, ['sma','led','moth'])
-        self.act_type = act_type
-
-class Sensor:
-    def __init__(self, sens_type):
-        assert sens_type in ['ir'], "Invalid sensor type {}, must be {}".format(sens_type, ['ir'])
-        self.sens_type = sens_type
-    
-    def read(self):
-        # read sensor
-        return None
-
-'''
-
 
 class Node:
     def __init__(self, sma_num, led_num, moth_num, para=None):
@@ -203,7 +186,7 @@ class Sculpture:
             self.node_list.append(Node(sma_num, led_num, moth_num))
 
         print("Sculpture initialized.")
-        self.sculpture_info()
+        self._sculpture_info()
 
         # create a chain that defines the structure of sculpture
         # Used in propagation
@@ -236,7 +219,7 @@ class Sculpture:
         for act in act_list:
             self.node_list[index].activate(act)
 
-    def sculpture_info(self):
+    def _sculpture_info(self):
         print("{} nodes".format(self.num_nodes))
         print("Each node has {} sma, {} led, {} moth".format(self.sma_num, self.led_num, self.moth_num))
 
@@ -321,7 +304,7 @@ class Behaviour:
         return action
 
     def create_propagation_list(self, node_index):
-        # find starting location
+        # Find starting location
         start_point = -1
         for i in range(len(self.sculpture.chain)):
             if node_index in self.sculpture.chain[i]:
@@ -329,7 +312,7 @@ class Behaviour:
                 break
         assert start_point >= 0, "No starting point found for propagation."
 
-        # create list
+        # Create list
         p_list = list()
         i = 1
         while True:

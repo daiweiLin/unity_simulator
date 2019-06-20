@@ -56,7 +56,7 @@ if __name__ == '__main__':
     # 3. Start the environment
     #    interact_with_app == True: interact with application
     #    interact_with_app == False: interact with Unity scene starting by click play in Unity
-    interact_with_app = True
+    interact_with_app = False
     if interact_with_app == True:
         env = UnityEnvironment(file_name=env_name, seed=1, no_graphics=False)
     else:
