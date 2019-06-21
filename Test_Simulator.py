@@ -13,30 +13,9 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from mlagents.envs import UnityEnvironment
-from Prescripted_behaviour import *
+from Prescripted_behaviour_timing import *
 from LASAgent.LASBaselineAgent import *
 from Visitor_behaviour import *
-
-'''
-def visitor_behavior(observation, node_number):
-    # print("visitor observation: {}".format(observation))
-    visitor_action = np.random.uniform(low=-1, high=1, size=2)*np.array([12.5, 7.5])
-    x = []
-    y = []
-    for i in range(node_number):
-        if observation[i] > 0:
-            x.append(observation[node_number+i*2])
-            y.append(observation[node_number+i*2+1])
-    if len(x) > 1:
-        random = np.random.randint(low=0, high=len(x)-1)
-        visitor_action = [x[random], y[random]]
-        # print("visitor find light at {}".format(visitor_action))
-    elif len(x) == 1:
-        visitor_action = [x[0], y[0]]
-        # print("visitor find light at {}".format(visitor_action))
-
-    return visitor_action
-'''
 
 
 def LAS_behavior(p, action_dimension):
@@ -124,7 +103,8 @@ def run(mode, behaviour, visitors_behaviour):
     done = False
     reward = 0
     observation = env_info[LAS_brain_name].vector_observations[0]
-
+    simulator_time = observation[-1]
+    observation = observation[0:-1]
     take_action_flag = 1  # switch for debugging
 
     if mode == 'PLA':
@@ -141,7 +121,7 @@ def run(mode, behaviour, visitors_behaviour):
                 s += 1
                 # print('s={}'.format(s))
 
-            LAS_action = behaviour.step(observation)
+            LAS_action = behaviour.step(observation, simulator_time)
             LAS_action = LAS_action + [take_action_flag]
             # print("LAS Action:{}".format(LAS_action))
 
@@ -157,6 +137,10 @@ def run(mode, behaviour, visitors_behaviour):
 
             reward = env_info[LAS_brain_name].rewards[0]
             observation = env_info[LAS_brain_name].vector_observations[0]
+            # <use time in simulator>
+            simulator_time = observation[-1]
+            observation = observation[0:-1]
+            # <end of use time in simulator>
             done = env_info[LAS_brain_name].local_done[0]
 
     elif mode == 'SARA':
@@ -176,6 +160,10 @@ def run(mode, behaviour, visitors_behaviour):
 
             reward = env_info[LAS_brain_name].rewards[0]
             observation = env_info[LAS_brain_name].vector_observations[0]
+            # <use time in simulator>
+            simulator_time = observation[-1]
+            observation = observation[0:-1]
+            # <end of use time in simulator>
             done = env_info[LAS_brain_name].local_done[0]
 
             s += 1
