@@ -175,8 +175,8 @@ class BaselineAgent:
                 obs_min = np.array([-1] * observation_dim)
                 act_max = np.array([1] * action_dim)
                 act_min = np.array([-1] * action_dim)
-            self.observation_space = spaces.Box(obs_min, obs_max, dtype=np.float32)
-            self.action_space = spaces.Box(act_min, act_max, dtype=np.float32)
+                self.observation_space = spaces.Box(obs_min, obs_max, dtype=np.float32)
+                self.action_space = spaces.Box(act_min, act_max, dtype=np.float32)
 
         self.reward = 0
         self.action = np.zeros(self.action_space.shape[0])

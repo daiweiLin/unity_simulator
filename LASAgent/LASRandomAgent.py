@@ -29,7 +29,7 @@ from baselines.ddpg.noise import *
 
 class LASRandomAgent:
     def __init__(self, agent_name, observation_dim, action_dim, num_observation=20, env=None, env_type='Unity', load_pretrained_agent_flag=False, save_dir=None):
-        self.baseline_agent = BaselineAgent(agent_name, observation_dim, action_dim, env, env_type, load_pretrained_agent_flag, save_dir)
+        self.randomAgent = RandomAgent(agent_name, observation_dim, action_dim, env, env_type, save_dir)
         self.internal_env = InternalEnvironment(observation_dim, action_dim, num_observation)
 
     def feed_observation(self,observation):
@@ -58,14 +58,14 @@ class LASRandomAgent:
 
         is_new_observation, filtered_observation, reward = self.internal_env.feed_observation(observation)
         if is_new_observation:
-            action = self.baseline_agent.interact(filtered_observation, reward, done=False)
+            action = self.randomAgent.interact(filtered_observation, reward, done=False)
             take_action_flag = 1
             return take_action_flag, action
         else:
             return take_action_flag, []
 
     def stop(self):
-        self.baseline_agent.stop()
+        self.randomAgent.stop()
 
 
 class InternalEnvironment:
@@ -132,8 +132,8 @@ class InternalEnvironment:
         return np.mean(signal, axis = 0)
 
 
-class BaselineAgent:
-    def __init__(self, agent_name, observation_dim, action_dim, env=None, env_type='VREP', load_pretrained_agent_flag=False, save_dir=None):
+class RandomAgent:
+    def __init__(self, agent_name, observation_dim, action_dim, env=None, env_type='VREP', save_dir=None):
 
         self.name = agent_name
         #=======================================#
@@ -149,8 +149,6 @@ class BaselineAgent:
         rank = MPI.COMM_WORLD.Get_rank()
         if rank != 0:
             logger.set_level(logger.DISABLED)
-
-        eval_env = None
 
         # ===================================== #
         # Define observation and action space   #
@@ -175,91 +173,26 @@ class BaselineAgent:
                 obs_min = np.array([-1] * observation_dim)
                 act_max = np.array([1] * action_dim)
                 act_min = np.array([-1] * action_dim)
-            self.observation_space = spaces.Box(obs_min, obs_max, dtype=np.float32)
-            self.action_space = spaces.Box(act_min, act_max, dtype=np.float32)
+                self.observation_space = spaces.Box(obs_min, obs_max, dtype=np.float32)
+                self.action_space = spaces.Box(act_min, act_max, dtype=np.float32)
 
         self.reward = 0
         self.action = np.zeros(self.action_space.shape[0])
-        self.prev_observation = np.zeros(self.observation_space.shape[0], dtype=np.float32 )
-        # =============#
-        # Define noise #
-        # =============#
+        self.prev_observation = np.zeros(self.observation_space.shape[0], dtype=np.float32)
 
-        # Parse noise_type
-        action_noise = None
-        param_noise = None
-        nb_actions = self.action_space.shape[-1]
-
-        for current_noise_type in noise_type.split(','):
-            current_noise_type = current_noise_type.strip()
-            if current_noise_type == 'none':
-                pass
-            elif 'adaptive-param' in current_noise_type:
-                _, stddev = current_noise_type.split('_')
-                param_noise = AdaptiveParamNoiseSpec(initial_stddev=float(stddev), desired_action_stddev=float(stddev))
-            elif 'normal' in current_noise_type:
-                _, stddev = current_noise_type.split('_')
-                action_noise = NormalActionNoise(mu=np.zeros(nb_actions), sigma=float(stddev) * np.ones(nb_actions))
-            elif 'ou' in current_noise_type:
-                _, stddev = current_noise_type.split('_')
-                action_noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(nb_actions),
-                                                            sigma=float(stddev) * np.ones(nb_actions))
-            else:
-                raise RuntimeError('unknown noise type "{}"'.format(current_noise_type))
-
-        #============================================#
-        # Configure neural nets for actor and critic #
-        #============================================#
-
-        self.memory = Memory(limit=int(1e6), action_shape=self.action_space.shape,
-                        observation_shape=self.observation_space.shape)
-        critic = Critic(layer_norm=layer_norm)#, share=share)
-        actor = Actor(nb_actions, layer_norm=layer_norm) #, share=share)
-
-        tf.reset_default_graph()
+        # tf.reset_default_graph()
 
         # Disable logging for rank != 0 to avoid noise.
         if rank == 0:
             start_time = time.time()
 
-
-
-
         assert (np.abs(self.action_space.low) == self.action_space.high).all()  # we assume symmetric actions.
-        max_action = self.action_space.high
+        # max_action = self.action_space.high
         # logger.info('scaling actions by {} before executing in env'.format(max_action))
 
-        #=======================#
-        # Create learning agent #
-        #=======================#
-
-        # Get learning parameters from args
-        gamma = args['gamma']
-        tau = 0.01 # <==== according to training .py   tau=0.01 by default
-        normalize_returns = args['normalize_returns']
-        normalize_observations = args['normalize_observations']
-        self.batch_size = args['batch_size'] # used in interact() as well
-        critic_l2_reg = args['critic_l2_reg']
-        actor_lr = args['actor_lr']
-        critic_lr = args['critic_lr']
-        popart = args['popart']
-        clip_norm = args['clip_norm']
-        reward_scale = args['reward_scale']
-
-        # create learning agent
-        self.agent = DDPG(actor, critic, self.memory, self.observation_space.shape, self.action_space.shape,
-                     gamma=gamma, tau=tau, normalize_returns=normalize_returns,
-                     normalize_observations=normalize_observations,
-                     batch_size=self.batch_size, action_noise=action_noise, param_noise=param_noise,
-                     critic_l2_reg=critic_l2_reg,
-                     actor_lr=actor_lr, critic_lr=critic_lr, enable_popart=popart, clip_norm=clip_norm,
-                     reward_scale=reward_scale)
-        # logger.info('Using agent with the following configuration:')
-        # logger.info(str(self.agent.__dict__.items()))
 
         # Reward histories
 
-        # eval_episode_rewards_history = deque(maxlen=100)
         self.episode_rewards_history = deque(maxlen=100)
         self.avg_episode_rewards_history = []
 
@@ -298,16 +231,7 @@ class BaselineAgent:
 
         self.sess = U.make_session(num_cpu=1, make_default=True)
 
-        self.agent.initialize(self.sess)
-        self.saver = tf.train.Saver()
-
-        if load_pretrained_agent_flag == True:
-            self._load_model(self.model_dir)
-
-        # self.sess.graph.finalize()
-
-
-        self.agent.reset()
+        # self.saver = tf.train.Saver()
 
         #==============#
         # logging info #
@@ -330,23 +254,6 @@ class BaselineAgent:
         self.epoch_episodes = 0
         self.param_noise_adaption_interval = 50
 
-        #==========================================#
-        # default prescripted behaviour parameters #
-        #==========================================#
-        # Actions are a list of values:
-        # [1a moth, 1a RS, 1b moth, 1b RS, 1c moth, 1c RS, 1d, 2, 3, 4, 5a, 5b, 6a, 6b, 7, 8a, 8b]        #
-        # constant parameters: 5a, 5b, 6a, 6b, 8a, 8b
-        # min_val = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 15000, 60000, 0, 0, 0, 1000, 5, 200])
-        #
-        # max_val = np.array(
-        #     [5000, 5000, 5000, 5000, 5000, 5000, 255, 5000, 5000, 60000, 100000, 10000, 100, 5000, 5000, 200, 400])
-        #
-        # default_val = np.array(
-        #     [1500, 1500, 1000, 1000, 2500, 2500, 200, 1500, 300, 45000, 90000, 5000, 40, 1800, 700, 120, 240])
-        #
-        # self.default_para = (default_val - min_val) / (max_val - min_val)
-        # self.variable_para_index = [0,1,2,3,4,5,6,7,8,9,14]
-        # assert len(self.variable_para_index) == self.action_space.shape[0], "variable_para_index={}, action_space={}".format(len(self.variable_para_index), self.action_space.shape[0])
 
 
     def interact(self, observation, reward = 0, done = False):
@@ -360,8 +267,8 @@ class BaselineAgent:
         # if self.env is not None:
         #     self.observe(observation)
         with self.sess.as_default():
-            action, q = self.agent.pi(observation, apply_noise=True, compute_Q=True)
-            assert action.shape == self.action_space.shape
+            action = self.action_space.sample()
+            # assert action.shape == self.action_space.shape
 
             # Execute next action.
 
@@ -376,11 +283,10 @@ class BaselineAgent:
 
             # Book-keeping.
             self.epoch_actions.append(action)
-            self.epoch_qs.append(q)
             # Note: self.action correspond to prev_observation
             #       reward correspond to observation
-            if self.action is not None:
-                self.agent.store_transition(self.prev_observation, self.action, reward, observation, done)
+            # if self.action is not None:
+            #     self.agent.store_transition(self.prev_observation, self.action, reward, observation, done)
 
             self._save_log(self.log_dir,
                            [datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), self.prev_observation, self.action, reward])
@@ -401,7 +307,7 @@ class BaselineAgent:
                 self.epoch_episodes += 1
                 self.episodes += 1
 
-                self.agent.reset() # <<<<???? not sure
+                # self.agent.reset() # <<<<???? not sure
                 # For simulation on unity, no reset needed. Because the simulation is to simulate ROM experiment.
                 # if self.env is not None:
                 #     obs = self.env.reset()
@@ -410,20 +316,6 @@ class BaselineAgent:
             # Training
             # At the end of rollout(nb_rollout_steps), it will train the model by nb_train_steps times
             if self.rollout_step_cnt >= self.nb_rollout_steps:
-
-                self.epoch_actor_losses = []
-                self.epoch_critic_losses = []
-                self.epoch_adaptive_distances = []
-                for t_train in range(self.nb_train_steps):
-                    # Adapt param noise, if necessary.
-                    if self.memory.nb_entries >= self.batch_size and t_train % self.param_noise_adaption_interval == 0:
-                        distance = self.agent.adapt_param_noise()
-                        self.epoch_adaptive_distances.append(distance)
-
-                    cl, al = self.agent.train()
-                    self.epoch_critic_losses.append(cl)
-                    self.epoch_actor_losses.append(al)
-                    self.agent.update_target_net()
 
                 self.rollout_step_cnt = 0
                 self.epoch_cycle_cnt += 1
@@ -437,16 +329,11 @@ class BaselineAgent:
                 # Log stats.
                 # XXX shouldn't call np.mean on variable length lists
                 duration = time.time() - self.start_time
-                stats = self.agent.get_stats()
-                combined_stats = stats.copy()
+                # stats = self.agent.get_stats()
+                combined_stats = dict()
                 combined_stats['rollout/return'] = np.sum(self.epoch_episode_rewards)
                 combined_stats['rollout/return_history'] = np.mean(self.episode_rewards_history)
                 combined_stats['rollout/episode_steps'] = np.mean(self.epoch_episode_steps)
-                combined_stats['rollout/actions_mean'] = np.mean(self.epoch_actions)
-                combined_stats['rollout/Q_mean'] = np.mean(self.epoch_qs)
-                combined_stats['train/loss_actor'] = np.mean(self.epoch_actor_losses)
-                combined_stats['train/loss_critic'] = np.mean(self.epoch_critic_losses)
-                combined_stats['train/param_noise_distance'] = np.mean(self.epoch_adaptive_distances)
                 combined_stats['total/duration'] = duration
                 combined_stats['total/steps_per_second'] = float(self.t) / float(duration)
                 combined_stats['total/episodes'] = self.episodes
@@ -486,27 +373,6 @@ class BaselineAgent:
 
         return action
 
-    def _load_model(self, model_dir):
-        """
-        Load a pre-trained model from file specified in model directory
-        """
-        with self.sess.as_default():
-            # saver = tf.train.Saver()
-            file_dir = os.path.join(model_dir,'param_action.ckpt')
-            self.saver.restore(self.sess, file_dir)
-            print("Model loaded from {}", format(file_dir))
-
-    def _save_model(self, model_dir):
-        """
-        Save a model to specified directory
-        :param model_dir:
-
-        """
-
-        # saver = tf.train.Saver() # move this up to initialization
-        file_dir = os.path.join(model_dir, 'param_action.ckpt')
-        path = self.saver.save(self.sess, file_dir)
-        print("Model saved at {}".format(path))
 
     def _save_log(self, save_dir, data):
         """
@@ -526,39 +392,6 @@ class BaselineAgent:
         # total step = nb_epochs * nb_epoch_cycles * nb_rollout_steps
 
         """
-        # parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-        #
-        # # parser.add_argument('--env-id', type=str, default='HalfCheetah-v1')
-        # boolean_flag(parser, 'render-eval', default=False)
-        # boolean_flag(parser, 'layer-norm', default=True)
-        # boolean_flag(parser, 'render', default=False)
-        # boolean_flag(parser, 'normalize-returns', default=False)
-        # boolean_flag(parser, 'normalize-observations', default=True) # default = True
-        # # parser.add_argument('--seed', help='RNG seed', type=int, default=0)
-        # parser.add_argument('--critic-l2-reg', type=float, default=1e-2)
-        # parser.add_argument('--batch-size', type=int, default=64)  # per MPI worker
-        # parser.add_argument('--actor-lr', type=float, default=1e-4)
-        # parser.add_argument('--critic-lr', type=float, default=1e-3)
-        # boolean_flag(parser, 'popart', default=False)
-        # parser.add_argument('--gamma', type=float, default=0.99)
-        # parser.add_argument('--reward-scale', type=float, default=1.)
-        # parser.add_argument('--clip-norm', type=float, default=None)
-        # parser.add_argument('--nb-epochs', type=int, default=2000)  # with default settings (500), perform 1M steps total
-        # parser.add_argument('--nb-epoch-cycles', type=int, default=2)
-        # parser.add_argument('--nb-train-steps', type=int, default=20)  # per epoch cycle and MPI worker
-        # parser.add_argument('--nb-eval-steps', type=int, default=100)  # per epoch cycle and MPI worker
-        # parser.add_argument('--nb-rollout-steps', type=int, default=50)  # per epoch cycle and MPI worker  default 50
-        # parser.add_argument('--noise-type', type=str,
-        #                     default='adaptive-param_0.2')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
-        # parser.add_argument('--num-timesteps', type=int, default=None)
-        # boolean_flag(parser, 'evaluation', default=False)
-        # args = parser.parse_args()
-        # # we don't directly specify timesteps for this script, so make sure that if we do specify them
-        # # they agree with the other parameters
-        # if args.num_timesteps is not None:
-        #     assert (args.num_timesteps == args.nb_epochs * args.nb_epoch_cycles * args.nb_rollout_steps)
-        # dict_args = vars(args)
-        # del dict_args['num_timesteps']
 
         dict_args = dict()
         dict_args['render_eval'] = False
@@ -599,7 +432,7 @@ class BaselineAgent:
                 self.env.close()
 
         # save the model
-        self._save_model(self.model_dir)
+        # self._save_model(self.model_dir)
         # close the tf session
         self.sess.close()
 

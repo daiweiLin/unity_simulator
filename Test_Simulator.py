@@ -16,6 +16,7 @@ from mlagents.envs import UnityEnvironment
 from Prescripted_behaviour_timing import *
 from LASAgent.LASBaselineAgent import *
 from Visitor_behaviour import *
+from LASAgent.LASRandomAgent import *
 
 
 def LAS_behavior(p, action_dimension):
@@ -87,6 +88,11 @@ def init(mode, num_visitors, unity_dir, no_graphics=False, interact_with_app=Tru
         # initialize ml agent
         agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=168, num_observation=10,
                                  env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
+        return env, visitor_bh, agent, None
+    elif mode == 'Random':
+        # initialize random action agent
+        agent = LASRandomAgent('RandomAgent', observation_dim=24, action_dim=168, num_observation=10, env=env,
+                               env_type='Unity', save_dir=save_dir)
         return env, visitor_bh, agent, None
 
 
@@ -170,14 +176,40 @@ def run(mode, behaviour, agent, visitors_behaviour):
             # <end of use time in simulator>
             done = env_info[LAS_brain_name].local_done[0]
 
+    elif mode == 'Random':
+
+        total_steps = agent.randomAgent.nb_epochs * agent.randomAgent.nb_epoch_cycles * \
+                      agent.randomAgent.nb_rollout_steps
+        LAS_action = agent.randomAgent.action_space.sample().tolist() + [take_action_flag]
+        s = 0
+        while s <= total_steps - 1:
+
+            take_SARA_action_flag, new_LAS_action = agent.feed_observation(observation)
+            if take_SARA_action_flag:
+                LAS_action = new_LAS_action.tolist() + [take_action_flag]
+                s += 1
+
+            Visitor_action = visitors_behaviour.step(env_info[visitor_brain_name].vector_observations[0])
+
+            action = {LAS_brain_name: LAS_action, visitor_brain_name: Visitor_action}
+            # print("LED_Action: {}".format(LAS_action[:24]))
+            env_info = env.step(action)
+
+            reward = env_info[LAS_brain_name].rewards[0]
+            observation = env_info[LAS_brain_name].vector_observations[0]
+            # <use time in simulator>
+            simulator_time = observation[-1]
+            observation = observation[0:-1]
+            # <end of use time in simulator>
+            done = env_info[LAS_brain_name].local_done[0]
 
 
 
 if __name__ == '__main__':
 
     train_mode = True  # Whether to run the environment in training or inference mode
-    learning_mode = 'PLA'  # 'SARA', 'PLA'
-    n_visitors = 5
+    learning_mode = 'Random'  # 'SARA', 'PLA', 'Random'
+    n_visitors = 1
 
     is_sharcnet = False
     if len(sys.argv) > 1:
