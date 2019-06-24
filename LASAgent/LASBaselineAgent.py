@@ -526,39 +526,62 @@ class BaselineAgent:
         # total step = nb_epochs * nb_epoch_cycles * nb_rollout_steps
 
         """
-        parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        # parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        #
+        # # parser.add_argument('--env-id', type=str, default='HalfCheetah-v1')
+        # boolean_flag(parser, 'render-eval', default=False)
+        # boolean_flag(parser, 'layer-norm', default=True)
+        # boolean_flag(parser, 'render', default=False)
+        # boolean_flag(parser, 'normalize-returns', default=False)
+        # boolean_flag(parser, 'normalize-observations', default=True) # default = True
+        # # parser.add_argument('--seed', help='RNG seed', type=int, default=0)
+        # parser.add_argument('--critic-l2-reg', type=float, default=1e-2)
+        # parser.add_argument('--batch-size', type=int, default=64)  # per MPI worker
+        # parser.add_argument('--actor-lr', type=float, default=1e-4)
+        # parser.add_argument('--critic-lr', type=float, default=1e-3)
+        # boolean_flag(parser, 'popart', default=False)
+        # parser.add_argument('--gamma', type=float, default=0.99)
+        # parser.add_argument('--reward-scale', type=float, default=1.)
+        # parser.add_argument('--clip-norm', type=float, default=None)
+        # parser.add_argument('--nb-epochs', type=int, default=2000)  # with default settings (500), perform 1M steps total
+        # parser.add_argument('--nb-epoch-cycles', type=int, default=2)
+        # parser.add_argument('--nb-train-steps', type=int, default=20)  # per epoch cycle and MPI worker
+        # parser.add_argument('--nb-eval-steps', type=int, default=100)  # per epoch cycle and MPI worker
+        # parser.add_argument('--nb-rollout-steps', type=int, default=50)  # per epoch cycle and MPI worker  default 50
+        # parser.add_argument('--noise-type', type=str,
+        #                     default='adaptive-param_0.2')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
+        # parser.add_argument('--num-timesteps', type=int, default=None)
+        # boolean_flag(parser, 'evaluation', default=False)
+        # args = parser.parse_args()
+        # # we don't directly specify timesteps for this script, so make sure that if we do specify them
+        # # they agree with the other parameters
+        # if args.num_timesteps is not None:
+        #     assert (args.num_timesteps == args.nb_epochs * args.nb_epoch_cycles * args.nb_rollout_steps)
+        # dict_args = vars(args)
+        # del dict_args['num_timesteps']
 
-        # parser.add_argument('--env-id', type=str, default='HalfCheetah-v1')
-        boolean_flag(parser, 'render-eval', default=False)
-        boolean_flag(parser, 'layer-norm', default=True)
-        boolean_flag(parser, 'render', default=False)
-        boolean_flag(parser, 'normalize-returns', default=False)
-        boolean_flag(parser, 'normalize-observations', default=True) # default = True
-        # parser.add_argument('--seed', help='RNG seed', type=int, default=0)
-        parser.add_argument('--critic-l2-reg', type=float, default=1e-2)
-        parser.add_argument('--batch-size', type=int, default=64)  # per MPI worker
-        parser.add_argument('--actor-lr', type=float, default=1e-4)
-        parser.add_argument('--critic-lr', type=float, default=1e-3)
-        boolean_flag(parser, 'popart', default=False)
-        parser.add_argument('--gamma', type=float, default=0.99)
-        parser.add_argument('--reward-scale', type=float, default=1.)
-        parser.add_argument('--clip-norm', type=float, default=None)
-        parser.add_argument('--nb-epochs', type=int, default=2000)  # with default settings (500), perform 1M steps total
-        parser.add_argument('--nb-epoch-cycles', type=int, default=2)
-        parser.add_argument('--nb-train-steps', type=int, default=20)  # per epoch cycle and MPI worker
-        parser.add_argument('--nb-eval-steps', type=int, default=100)  # per epoch cycle and MPI worker
-        parser.add_argument('--nb-rollout-steps', type=int, default=50)  # per epoch cycle and MPI worker  default 50
-        parser.add_argument('--noise-type', type=str,
-                            default='adaptive-param_0.2')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
-        parser.add_argument('--num-timesteps', type=int, default=None)
-        boolean_flag(parser, 'evaluation', default=False)
-        args = parser.parse_args()
-        # we don't directly specify timesteps for this script, so make sure that if we do specify them
-        # they agree with the other parameters
-        if args.num_timesteps is not None:
-            assert (args.num_timesteps == args.nb_epochs * args.nb_epoch_cycles * args.nb_rollout_steps)
-        dict_args = vars(args)
-        del dict_args['num_timesteps']
+        dict_args = dict()
+        dict_args['render_eval'] = False
+        dict_args['layer_norm'] = True
+        dict_args['render'] = False
+        dict_args['normalize_returns'] = False
+        dict_args['normalize_observations'] = False
+        dict_args['critic_l2_reg'] = 1e-2
+        dict_args['batch_size'] = 64
+        dict_args['actor_lr'] = 1e-4
+        dict_args['critic_lr'] = 1e-3
+        dict_args['popart'] = False
+        dict_args['gamma'] = 0.99
+        dict_args['reward_scale'] = 1.
+        dict_args['clip_norm'] = None
+        dict_args['nb_epochs'] = 2000
+        dict_args['nb_epoch_cycles'] = 2
+        dict_args['nb_train_steps'] = 20
+        dict_args['nb_eval_steps'] = 100
+        dict_args['nb_rollout_steps'] = 50
+        dict_args['noise_type'] = 'adaptive-param_0.2'
+        dict_args['evaluation'] = False
+
         return dict_args
 
     def stop(self):

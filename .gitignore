@@ -112,3 +112,5 @@ LAS-Scenes/Unity_Linux/LAS_Simulator.x86_64
 save/**/*.csv
 SHARCNET/Results/**/*.csv
 
+SHARCNET/Results/SARA_LED_2000epoch/SARA/2019-06-21-170608/simulation2_16309860ob.out
+SHARCNET/Results/PLA_LED_2000epoch/2019-06-21-170608/simulation_16309856.out

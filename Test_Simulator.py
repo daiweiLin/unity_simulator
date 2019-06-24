@@ -76,7 +76,7 @@ def init(mode, num_visitors, unity_dir, no_graphics=False, interact_with_app=Tru
     if mode == 'PLA':
         # initialize pre-scripted behaviour class
         ROM_sculpture = Sculpture(node_num=24, sma_num=6, led_num=1, moth_num=1)
-        behaviour = Behaviour(ROM_sculpture, system_freq=8.6)
+        behaviour = Behaviour(ROM_sculpture, system_freq=10)
 
         # initialize ml agent
         agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=11, num_observation=10,
@@ -85,12 +85,12 @@ def init(mode, num_visitors, unity_dir, no_graphics=False, interact_with_app=Tru
 
     elif mode == 'SARA':
         # initialize ml agent
-        agent = BaselineAgent('Baseline_Agent', observation_dim=24, action_dim=168, env=env, env_type='Unity',
-                              load_pretrained_agent_flag=False, save_dir=save_dir)
+        agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=168, num_observation=10,
+                                 env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
         return env, visitor_bh, agent, None
 
 
-def run(mode, behaviour, visitors_behaviour):
+def run(mode, behaviour, agent, visitors_behaviour):
 
     if visitors_behaviour.num_visitors > 1:
         visitor_brain_name = 'GroupVisitorBrain'
@@ -145,12 +145,16 @@ def run(mode, behaviour, visitors_behaviour):
 
     elif mode == 'SARA':
 
-        total_steps = agent.nb_epochs * agent.nb_epoch_cycles * agent.nb_rollout_steps
+        total_steps = agent.baseline_agent.nb_epochs * agent.baseline_agent.nb_epoch_cycles * \
+                      agent.baseline_agent.nb_rollout_steps
+        LAS_action = agent.baseline_agent.action_space.sample().tolist() + [take_action_flag]
         s = 0
         while s <= total_steps - 1:
 
-            LAS_action = agent.interact(observation, reward, done)
-            LAS_action = LAS_action.tolist() + [take_action_flag]
+            take_SARA_action_flag, new_LAS_action = agent.feed_observation(observation)
+            if take_SARA_action_flag:
+                LAS_action = new_LAS_action.tolist() + [take_action_flag]
+                s += 1
 
             Visitor_action = visitors_behaviour.step(env_info[visitor_brain_name].vector_observations[0])
 
@@ -166,8 +170,6 @@ def run(mode, behaviour, visitors_behaviour):
             # <end of use time in simulator>
             done = env_info[LAS_brain_name].local_done[0]
 
-            s += 1
-
 
 
 
@@ -175,9 +177,13 @@ if __name__ == '__main__':
 
     train_mode = True  # Whether to run the environment in training or inference mode
     learning_mode = 'PLA'  # 'SARA', 'PLA'
-    n_visitors = 1
+    n_visitors = 5
 
     is_sharcnet = False
+    if len(sys.argv) > 1:
+        is_sharcnet = sys.argv[1] == "True"
+        learning_mode = sys.argv[2]
+        n_visitors = int(sys.argv[3])
 
     if is_sharcnet:
         interact_with_app = True
@@ -195,10 +201,10 @@ if __name__ == '__main__':
     save_dir = os.path.join(os.path.abspath('.'), 'save', learning_mode, date)
 
     print("Training Case Parameters:")
-    print("training_mode={}, learning_mode={}, number_of_visitors={}, interact_with_app={}".format(train_mode, learning_mode, n_visitors, interact_with_app))
+    print("Is_sharcnet={}, training_mode={}, learning_mode={}, number_of_visitors={}, interact_with_app={}".format(is_sharcnet, train_mode, learning_mode, n_visitors, interact_with_app))
 
     env, visitors_bh, agent, bh = init(mode=learning_mode, num_visitors=n_visitors,
                                        unity_dir=unity_dir, no_graphics=no_graphics,
                                        interact_with_app=interact_with_app,
                                        save_dir=save_dir)
-    run(mode=learning_mode, behaviour=bh, visitors_behaviour=visitors_bh)
+    run(mode=learning_mode, behaviour=bh, agent=agent, visitors_behaviour=visitors_bh)

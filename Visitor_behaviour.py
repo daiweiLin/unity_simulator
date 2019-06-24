@@ -31,7 +31,7 @@ class Visitor_behaviour:
             # print("visitor find light at {}".format(visitor_action))
         else:
             visitor_actions = np.random.uniform(low=-1, high=1, size=self.num_visitors * 2) * np.array(
-                [12.5, 7.5] * self.num_visitors)
+                [10.0, 6.5] * self.num_visitors)
 
         return visitor_actions
 
