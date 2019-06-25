@@ -1,0 +1,12 @@
+actuator_name,index
+led_ru,0
+led_ho,1
+led_rd,2
+moth_ru,3
+moth_ho,4
+moth_rd,5
+I_max,6
+ml_gap,7
+sma_gap,8
+n_gap,9
+t_sma,10
