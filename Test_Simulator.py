@@ -58,8 +58,7 @@ def init(mode, num_visitors, unity_dir, no_graphics=False, interact_with_app=Tru
     ############
     # Visitors #
     ############
-
-    visitor_bh = Visitor_behaviour(num_visitors, 24)
+    visitor_bh = Visitor_behaviour(num_visitors, 2)
 
     ##################
     # Learning Agent #
@@ -106,9 +105,13 @@ def run(mode, behaviour, agent, visitors_behaviour):
 
     print("Learning:")
     env_info = env.reset(train_mode=train_mode)
+
+    coordinates = env_info[visitor_brain_name].vector_observations[0][24:72]
+    visitors_behaviour.setup(coordinates)
+
+    observation = env_info[LAS_brain_name].vector_observations[0]
     done = False
     reward = 0
-    observation = env_info[LAS_brain_name].vector_observations[0]
     simulator_time = observation[-1]
     observation = observation[0:-1]
     take_action_flag = 1  # switch for debugging
@@ -208,7 +211,7 @@ def run(mode, behaviour, agent, visitors_behaviour):
 if __name__ == '__main__':
 
     train_mode = True  # Whether to run the environment in training or inference mode
-    learning_mode = 'Random'  # 'SARA', 'PLA', 'Random'
+    learning_mode = 'PLA'  # 'SARA', 'PLA', 'Random'
     n_visitors = 1
 
     is_sharcnet = False
