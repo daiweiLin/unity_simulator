@@ -69,42 +69,24 @@ class Visitor_behaviour:
         ingame_t = observation[-1]
         for v in range(self.num_visitors):
 
-            duration = 0
+            # duration = 0
             dest = None
-            prev_dest = self.visitor_prev_dest[v]
 
             if is_arrv[v]:
-                if self.visitor_arrived_at_node[v] == False and prev_dest is not None:
-                    # Visitor just arrived at a node, so he/she wants to stay for amount of time before moving to next location
-                    # Start timing of the stay
-                    # self.visitor_start_ts[v] = ingame_t
-                    self.visitor_arrived_at_node[v] = True
-                    dest = self.visitor_prev_dest[v]
-
-                elif self.visitor_arrived_at_node[v] == False and prev_dest is None:
+                prev_dest = self.visitor_prev_dest[v]
+                if prev_dest is None:
                     # Visitor just arrived at a random position, so he/she moves to next location
                     dest = self.find_hot_spot(observation=obs, visitor_at_node=prev_dest)
                     self.visitor_prev_dest[v] = dest
-
                 else:
-                    # Visitor has been at a node for a while
-                    # duration = ingame_t - self.visitor_start_ts[v]
-                    # if duration > self.visitor_stay_time:
-                    #     # visitor gets bored, and find somewhere else to see
-                    #     dest = self.find_hot_spot(observation=obs, visitor_at_node=prev_dest)
-                    #     self.visitor_prev_dest[v] = dest
-                    # else:
-                    #     dest = self.visitor_prev_dest[v]
-
-                    # Visitor will look for a new destination if the node he is at is turned off. Otherwise, stay.
-                    if obs[self.visitor_prev_dest[v]] <= 0:
+                    # Visitor just arrived at a node, so he/she wants to stay as long as the light is ON
+                    if obs[prev_dest] <= 0:
                         dest = self.find_hot_spot(observation=obs, visitor_at_node=prev_dest)
                         self.visitor_prev_dest[v] = dest
                     else:
                         dest = self.visitor_prev_dest[v]
 
             else:
-                self.visitor_arrived_at_node[v] = False
                 dest = self.find_hot_spot(observation=obs, visitor_at_node=None)
 
             if dest is not None:
