@@ -112,3 +112,4 @@ LAS-Scenes/Unity_Linux/LAS_Simulator.x86_64
 save/**/*.csv
 SHARCNET/Results/**/*.csv
 SHARCNET/Results/**/*.out
+.idea/unity_simulator.iml
