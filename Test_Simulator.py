@@ -211,7 +211,7 @@ def run(mode, behaviour, agent, visitors_behaviour):
 if __name__ == '__main__':
 
     train_mode = True  # Whether to run the environment in training or inference mode
-    learning_mode = 'PLA'  # 'SARA', 'PLA', 'Random'
+    learning_mode = 'SARA'  # 'SARA', 'PLA', 'Random'
     n_visitors = 1
 
     is_sharcnet = False

@@ -431,8 +431,6 @@ class RandomAgent:
                 print("close Unity.")
                 self.env.close()
 
-        # save the model
-        # self._save_model(self.model_dir)
         # close the tf session
         self.sess.close()
 
