@@ -64,5 +64,10 @@ cd ..
 cd gym-unity
 pip install -e ./
 ```
+Notice that when installing ml-agents, the numpy version is required to be lower than 1.14.5. This is not supported by tensorflow1.7.0+computecanada. Therefore, after the installation above is finished, force update the numpy once again. This won't affect ml-agents (at least at the moment).
+```
+pip install numpy --upgrade
+```
+
 ## 4. Install Baselines
 See [here](https://github.com/UWaterloo-ASL/ML_lite/blob/master/README.md) for installation detail
