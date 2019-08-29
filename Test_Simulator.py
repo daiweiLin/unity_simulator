@@ -26,7 +26,7 @@ def LAS_behavior(p, action_dimension):
         return np.zeros(action_dimension)
 
 
-def init(mode, num_visitors, unity_dir, no_graphics=False, interact_with_app=True, save_dir=None):
+def init(mode, num_visitors, attractions, unity_dir, no_graphics=False, interact_with_app=True, save_dir=None):
 
     env_name = unity_dir
     # Start the environment
@@ -58,7 +58,7 @@ def init(mode, num_visitors, unity_dir, no_graphics=False, interact_with_app=Tru
     ############
     # Visitors #
     ############
-    visitor_bh = Visitor_behaviour(num_visitors, 2)
+    visitor_bh = Visitor_behaviour(num_visitors, attractions)
 
     ##################
     # Learning Agent #
@@ -106,7 +106,7 @@ def run(mode, behaviour, agent, visitors_behaviour):
     print("Learning:")
     env_info = env.reset(train_mode=train_mode)
 
-    coordinates = env_info[visitor_brain_name].vector_observations[0][24:72]
+    coordinates = env_info[visitor_brain_name].vector_observations[0][168:216]
     visitors_behaviour.setup(coordinates)
 
     observation = env_info[LAS_brain_name].vector_observations[0]
@@ -213,6 +213,7 @@ if __name__ == '__main__':
     train_mode = True  # Whether to run the environment in training or inference mode
     learning_mode = 'Random'  # 'SARA', 'PLA', 'Random'
     n_visitors = 1
+    attractions = ["LED"]
 
     is_sharcnet = False
     if len(sys.argv) > 1:
@@ -238,7 +239,7 @@ if __name__ == '__main__':
     print("Training Case Parameters:")
     print("Is_sharcnet={}, training_mode={}, learning_mode={}, number_of_visitors={}, interact_with_app={}".format(is_sharcnet, train_mode, learning_mode, n_visitors, interact_with_app))
 
-    env, visitors_bh, agent, bh = init(mode=learning_mode, num_visitors=n_visitors,
+    env, visitors_bh, agent, bh = init(mode=learning_mode, num_visitors=n_visitors, attractions=attractions,
                                        unity_dir=unity_dir, no_graphics=no_graphics,
                                        interact_with_app=interact_with_app,
                                        save_dir=save_dir)

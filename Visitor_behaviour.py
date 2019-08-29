@@ -3,9 +3,11 @@ import numpy as np
 
 class Visitor_behaviour:
 
-    def __init__(self, num_visitors, stay_time):
+    def __init__(self, num_visitors, attractions):
         self.num_visitors = num_visitors
-        self.visitor_stay_time = stay_time # seconds
+        # self.visitor_stay_time = stay_time # seconds
+
+        self.attractions = attractions
         self.node_number = None
         self.dist_matrix = None
 
@@ -30,18 +32,29 @@ class Visitor_behaviour:
         # print(dis_matrix)
         return dis_matrix
 
-    def find_hot_spot(self, observation, visitor_at_node):
+    def find_hot_spot(self, observation, attraction):
         """
         Find the spot with most activities in the area
         The score is calculated using the sum of inverse of distances times observation values.
         :return: index of selected spot if exists, return None o.w.
         """
-        observation = np.array(observation)
+        if attraction == "SMA":
+            # Attract to SMA
+            # Pre-process SMA observations in groups of 6
+            observation_sma = observation[self.node_number:]
+            observation_attracting = []
+            for i in range(self.node_number):
+                observation_attracting.append(np.sum(observation_sma[6*i:6*i+6]))
+        else:
+            # Attract to LED
+            observation_attracting = observation[:self.node_number]
+
+        observation_attracting = np.array(observation_attracting)
         heat = np.zeros(self.node_number)
         for i in range(self.node_number):
             distance = self.dist_matrix[i, :]
             distance[i] = 1 # change this to avoid numerical error
-            heat[i] = np.sum(observation * np.reciprocal(distance))
+            heat[i] = np.sum(observation_attracting * np.reciprocal(distance))
 
         # print("heat={}".format(heat))
         if np.sum(heat > 0) > 0:
@@ -53,6 +66,7 @@ class Visitor_behaviour:
         """
 
         :param observation: [LED1, LED2, ... LEDn,
+                            SMA1-1, SMA1-2,...,SMA1-6, SMA2-1, ..., SMAn-1,...SMAn-6,
                             x1, y1, x2, y2, ... xn, yn,
                             is_arrived_1, is_arrived_2, ... is_arrived_m,
                             ingame_time] 3*n + m + 1 elements in total.
@@ -62,11 +76,10 @@ class Visitor_behaviour:
         """
         visitor_actions = list()
 
-
-        obs = observation[0 : self.node_number]
-        positions = observation[self.node_number: self.node_number*3]
-        is_arrv = observation[self.node_number*3 : -1]
-        ingame_t = observation[-1]
+        obs = observation[0: 7 * self.node_number]
+        positions = observation[7 * self.node_number: 9 * self.node_number]
+        is_arrv = observation[9 * self.node_number: -1]
+        # ingame_t = observation[-1]  # this parameter is only used in pre-scripted_behaviour
         for v in range(self.num_visitors):
 
             # duration = 0
@@ -76,18 +89,18 @@ class Visitor_behaviour:
                 prev_dest = self.visitor_prev_dest[v]
                 if prev_dest is None:
                     # Visitor just arrived at a random position, so he/she moves to next location
-                    dest = self.find_hot_spot(observation=obs, visitor_at_node=prev_dest)
+                    dest = self.find_hot_spot(observation=obs, attraction=self.attractions[v])
                     self.visitor_prev_dest[v] = dest
                 else:
                     # Visitor just arrived at a node, so he/she wants to stay as long as the light is ON
                     if obs[prev_dest] <= 0:
-                        dest = self.find_hot_spot(observation=obs, visitor_at_node=prev_dest)
+                        dest = self.find_hot_spot(observation=obs, attraction=self.attractions[v])
                         self.visitor_prev_dest[v] = dest
                     else:
                         dest = self.visitor_prev_dest[v]
 
             else:
-                dest = self.find_hot_spot(observation=obs, visitor_at_node=None)
+                dest = self.find_hot_spot(observation=obs, attraction=self.attractions[v])
 
             if dest is not None:
                 # Found a destination
@@ -129,6 +142,6 @@ class Visitor_behaviour:
 if __name__ == "__main__":
     # This section is for testing Visitor_behaviour Class
 
-    visitor_bh = Visitor_behaviour(num_visitors=1, coordinates=[0,0, 0,1.5, 1.5,0, 1.5,1.5])
+    visitor_bh = Visitor_behaviour(num_visitors=1, attraction=["SMA"])
     print(visitor_bh.dist_matrix)
-    print(visitor_bh.find_hot_spot([0, 0.5, 0.1, 0.2]))
+    print(visitor_bh.find_hot_spot([0, 0.5, 0.1, 0.2], attraction=["SMA"]))
