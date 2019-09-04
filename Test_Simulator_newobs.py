@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from mlagents.envs import UnityEnvironment
 from Prescripted_behaviour_timing import *
 from LASAgent.LASBaselineAgent import *
-from Visitor_behaviour import *
+from Visitor_behaviour_new_obs import *
 from LASAgent.LASRandomAgent import *
 
 
