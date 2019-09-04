@@ -13,6 +13,7 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from mlagents.envs import UnityEnvironment
+from mlagents.envs.exception import UnityWorkerInUseException
 from Prescripted_behaviour_timing import *
 from LASAgent.LASBaselineAgent import *
 from Visitor_behaviour import *
@@ -26,34 +27,34 @@ def LAS_behavior(p, action_dimension):
         return np.zeros(action_dimension)
 
 
-def init(mode, num_visitors, unity_dir, no_graphics=False, interact_with_app=True, save_dir=None):
+def init(mode, num_visitors, unity_dir, save_dir, no_graphics=False, interact_with_app=True):
+    """
+    :param mode: Random, SARA or PLA
+    :param num_visitors: 1 or 5
+    :param unity_dir:
+    :param no_graphics: True if running jobs on SHARCNET
+    :param interact_with_app:
+        True: interact with application;
+        False: interact with Unity scene starting by click play in Unity
+    :param save_dir: log file directory
+    :return:
+    """
+    env_name = unity_dir if interact_with_app else None
 
-    env_name = unity_dir
-    # Start the environment
-    #    interact_with_app == True: interact with application
-    #    interact_with_app == False: interact with Unity scene starting by click play in Unity
-
-    if interact_with_app == True:
-        env = UnityEnvironment(file_name=env_name, seed=1, no_graphics=no_graphics)
-    else:
-        env = UnityEnvironment(file_name=None, seed=1)
-
-    # # Set the default brain to work with
-    # default_brain = env.brain_names[0]
-
-    # # Reset the environment
-    # env_info = env.reset(train_mode=train_mode)[default_brain]
-    #
-    # # Examine the state space for the default brain
-    # print("Agent state looks like: \n{}".format(env_info.vector_observations[0]))
-    #
-    # # Examine the observation space for the default brain
-    # for observation in env_info.visual_observations:
-    #     print("Agent observations look like:")
-    #     if observation.shape[3] == 3:
-    #         plt.imshow(observation[0, :, :, :])
-    #     else:
-    #         plt.imshow(observation[0, :, :, 0])
+    # Initialized unity environment. Each environment requires an unique worker_id.
+    worker_id = 0
+    while worker_id < 10:
+        try:
+            env = UnityEnvironment(file_name=env_name, seed=1, no_graphics=no_graphics, worker_id=worker_id)
+        except UnityWorkerInUseException:
+            print("Worker ID {} is in use.".format(worker_id))
+            worker_id += 1
+        except Exception as e:
+            print("Other exceptions:{}".format(e))
+        else:
+            print("UnityEnvironment initialized with worker_id={}".format(worker_id))
+            break
+    save_dir = save_dir + "-" + str(worker_id)
 
     ############
     # Visitors #
@@ -63,10 +64,7 @@ def init(mode, num_visitors, unity_dir, no_graphics=False, interact_with_app=Tru
     ##################
     # Learning Agent #
     ##################
-    if save_dir is not None:
-        summary_path = os.path.join(save_dir, 'summary')
-    else:
-        summary_path = os.path.join(os.path.abspath('.'), 'save', 'summary')
+    summary_path = os.path.join(save_dir, 'summary')
 
     if not os.path.exists(summary_path):
         os.makedirs(summary_path)
