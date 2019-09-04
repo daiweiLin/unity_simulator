@@ -110,7 +110,11 @@ cs885project.ipynb
 # Manually ignore big files
 LAS-Scenes/Unity_Linux/LAS_Simulator.x86_64
 save/**/*.csv
+
 SHARCNET/Results/**/*.csv
 SHARCNET/Results/**/*.out
+
 .idea/unity_simulator.iml
 .idea/unity_simulator.iml
+
+notebook/*.csv

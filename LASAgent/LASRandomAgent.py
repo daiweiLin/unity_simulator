@@ -107,7 +107,7 @@ class InternalEnvironment:
 
         return is_new_observation, flt_observation, reward
 
-    def take_action(self,action):
+    def take_action(self, action):
         take_action_flag = True
         return take_action_flag, action
 
