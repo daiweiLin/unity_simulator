@@ -172,7 +172,7 @@ def run(mode, behaviour, agent, visitors_behaviour):
             reward = env_info[LAS_brain_name].rewards[0]
             observation = env_info[LAS_brain_name].vector_observations[0]
             # <use time in simulator>
-            simulator_time = observation[-1]
+            # simulator_time = observation[-1]
             observation = observation[0:-1]
             # <end of use time in simulator>
             done = env_info[LAS_brain_name].local_done[0]
@@ -199,12 +199,13 @@ def run(mode, behaviour, agent, visitors_behaviour):
             reward = env_info[LAS_brain_name].rewards[0]
             observation = env_info[LAS_brain_name].vector_observations[0]
             # <use time in simulator>
-            simulator_time = observation[-1]
+            # simulator_time = observation[-1]
             observation = observation[0:-1]
             # <end of use time in simulator>
             done = env_info[LAS_brain_name].local_done[0]
 
-
+    print("close Unity.")
+    env.close()
 
 if __name__ == '__main__':
 

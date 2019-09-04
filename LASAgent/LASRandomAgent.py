@@ -422,15 +422,6 @@ class RandomAgent:
         Stop learning and store the information
 
         """
-        # if using the simulator
-        if self.env is not None:
-            if self.env_type == "V-REP":
-                print("close connection to V-REP simulator")
-                self.env.close_connection()
-            else:
-                print("close Unity.")
-                self.env.close()
-
         # close the tf session
         self.sess.close()
 

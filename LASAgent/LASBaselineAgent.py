@@ -589,15 +589,6 @@ class BaselineAgent:
         Stop learning and store the information
 
         """
-        # if using the simulator
-        if self.env is not None:
-            if self.env_type == "V-REP":
-                print("close connection to V-REP simulator")
-                self.env.close_connection()
-            else:
-                print("close Unity.")
-                self.env.close()
-
         # save the model
         self._save_model(self.model_dir)
         # close the tf session
