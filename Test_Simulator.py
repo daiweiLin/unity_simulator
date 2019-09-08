@@ -214,10 +214,12 @@ if __name__ == '__main__':
     n_visitors = 1
 
     is_sharcnet = False
+    job_id = ""
     if len(sys.argv) > 1:
         is_sharcnet = sys.argv[1] == "True"
         learning_mode = sys.argv[2]
         n_visitors = int(sys.argv[3])
+        job_id = sys.argv[4]
 
     if is_sharcnet:
         interact_with_app = True
@@ -232,7 +234,7 @@ if __name__ == '__main__':
         unity_dir = 'LAS-Scenes/Unity/LAS_Simulator'
 
     date = datetime.datetime.today().strftime('%Y-%m-%d-%H%M%S')
-    save_dir = os.path.join(os.path.abspath('.'), 'save', learning_mode, date)
+    save_dir = os.path.join(os.path.abspath('.'), 'save', learning_mode, date+"-"+job_id)
 
     print("Training Case Parameters:")
     print("Is_sharcnet={}, training_mode={}, learning_mode={}, number_of_visitors={}, interact_with_app={}".format(is_sharcnet, train_mode, learning_mode, n_visitors, interact_with_app))
