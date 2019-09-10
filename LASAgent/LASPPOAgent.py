@@ -72,11 +72,7 @@ class SpinUpPPOAgent:
     with early stopping based on approximate KL
     """
 
-    def __init__(self, agent_name, observation_dim, action_dim, env=None, env_type='VREP',
-                 load_pretrained_agent_flag=False, save_dir=None):
-        self.agent_name = agent_name
-
-    def ppo(self, env, actor_critic=core.mlp_actor_critic, ac_kwargs=dict(), seed=0,
+    def __init__(self, env, actor_critic=core.mlp_actor_critic, ac_kwargs=dict(), seed=0,
             steps_per_epoch=4000, epochs=50, gamma=0.99, clip_ratio=0.2, pi_lr=3e-4,
             vf_lr=1e-3, train_pi_iters=80, train_v_iters=80, lam=0.97, max_ep_len=1000,
             target_kl=0.01, logger_kwargs=dict(), save_freq=10):
@@ -132,137 +128,176 @@ class SpinUpPPOAgent:
             save_freq (int): How often (in terms of gap between epochs) to save
                 the current policy and value function.
         """
+        #======================#
+        # Parameters #
+        #============#
 
-        logger = EpochLogger(**logger_kwargs)
-        logger.save_config(locals())
+        self.epochs = epochs
+        self.steps_per_epoch = steps_per_epoch
+        self.pi_lr = pi_lr
+        self.vf_lr = vf_lr
+        self.train_pi_iters = train_pi_iters
+        self.train_v_iters = train_v_iters
+        self.max_ep_len = max_ep_len
+        self.target_kl = target_kl
+        logger_kwargs = dict()
+        self.save_freq = save_freq
 
-        seed += 10000 * proc_id()
-        tf.set_random_seed(seed)
-        np.random.seed(seed)
 
-        env = env
+        self.logger = EpochLogger(**logger_kwargs)
+        self.logger.save_config(locals())
+
+        self.seed = seed + 10000 * proc_id()
+        tf.set_random_seed(self.seed)
+        np.random.seed(self.seed)
+
+        self.env = env
         obs_dim = env.observation_space.shape
         act_dim = env.action_space.shape
 
         # Share information about action space with policy architecture
-        ac_kwargs['action_space'] = env.action_space
+        ac_kwargs['action_space'] = self.env.action_space
 
         # Inputs to computation graph
-        x_ph, a_ph = core.placeholders_from_spaces(env.observation_space, env.action_space)
-        adv_ph, ret_ph, logp_old_ph = core.placeholders(None, None, None)
+        self.x_ph, self.a_ph = core.placeholders_from_spaces(self.env.observation_space, self.env.action_space)
+        self.adv_ph, self.ret_ph, self.logp_old_ph = core.placeholders(None, None, None)
 
         # Main outputs from computation graph
-        pi, logp, logp_pi, v = actor_critic(x_ph, a_ph, **ac_kwargs)
+        self.pi, self.logp, self.logp_pi, self.v = actor_critic(self.x_ph, self.a_ph, **ac_kwargs)
 
         # Need all placeholders in *this* order later (to zip with data from buffer)
-        all_phs = [x_ph, a_ph, adv_ph, ret_ph, logp_old_ph]
+        self.all_phs = [self.x_ph, self.a_ph, self.adv_ph, self.ret_ph, self.logp_old_ph]
 
         # Every step, get: action, value, and logprob
-        get_action_ops = [pi, v, logp_pi]
+        self.get_action_ops = [self.pi, self.v, self.logp_pi]
 
         # Experience buffer
-        local_steps_per_epoch = int(steps_per_epoch / num_procs())
-        buf = PPOBuffer(obs_dim, act_dim, local_steps_per_epoch, gamma, lam)
+        self.local_steps_per_epoch = int(steps_per_epoch / num_procs())
+        self.buf = PPOBuffer(obs_dim, act_dim, self.local_steps_per_epoch, gamma, lam)
 
         # Count variables
         var_counts = tuple(core.count_vars(scope) for scope in ['pi', 'v'])
-        logger.log('\nNumber of parameters: \t pi: %d, \t v: %d\n' % var_counts)
+        self.logger.log('\nNumber of parameters: \t pi: %d, \t v: %d\n' % var_counts)
 
         # PPO objectives
-        ratio = tf.exp(logp - logp_old_ph)  # pi(a|s) / pi_old(a|s)
-        min_adv = tf.where(adv_ph > 0, (1 + clip_ratio) * adv_ph, (1 - clip_ratio) * adv_ph)
-        pi_loss = -tf.reduce_mean(tf.minimum(ratio * adv_ph, min_adv))
-        v_loss = tf.reduce_mean((ret_ph - v) ** 2)
+        ratio = tf.exp(self.logp - self.logp_old_ph)  # pi(a|s) / pi_old(a|s)
+        min_adv = tf.where(self.adv_ph > 0, (1 + clip_ratio) * self.adv_ph, (1 - clip_ratio) * self.adv_ph)
+        self.pi_loss = -tf.reduce_mean(tf.minimum(ratio * self.adv_ph, min_adv))
+        self.v_loss = tf.reduce_mean((self.ret_ph - self.v) ** 2)
 
         # Info (useful to watch during learning)
-        approx_kl = tf.reduce_mean(logp_old_ph - logp)  # a sample estimate for KL-divergence, easy to compute
-        approx_ent = tf.reduce_mean(-logp)  # a sample estimate for entropy, also easy to compute
+        self.approx_kl = tf.reduce_mean(self.logp_old_ph - self.logp)  # a sample estimate for KL-divergence, easy to compute
+        self.approx_ent = tf.reduce_mean(-self.logp)  # a sample estimate for entropy, also easy to compute
         clipped = tf.logical_or(ratio > (1 + clip_ratio), ratio < (1 - clip_ratio))
-        clipfrac = tf.reduce_mean(tf.cast(clipped, tf.float32))
+        self.clipfrac = tf.reduce_mean(tf.cast(clipped, tf.float32))
 
         # Optimizers
-        train_pi = MpiAdamOptimizer(learning_rate=pi_lr).minimize(pi_loss)
-        train_v = MpiAdamOptimizer(learning_rate=vf_lr).minimize(v_loss)
+        self.train_pi = MpiAdamOptimizer(learning_rate=pi_lr).minimize(self.pi_loss)
+        self.train_v = MpiAdamOptimizer(learning_rate=vf_lr).minimize(self.v_loss)
 
-        sess = tf.Session()
-        sess.run(tf.global_variables_initializer())
+        self.sess = tf.Session()
+        self.sess.run(tf.global_variables_initializer())
 
         # Sync params across processes
-        sess.run(sync_all_params())
+        self.sess.run(sync_all_params())
 
         # Setup model saving
-        logger.setup_tf_saver(sess, inputs={'x': x_ph}, outputs={'pi': pi, 'v': v})
+        self.logger.setup_tf_saver(self.sess, inputs={'x': self.x_ph}, outputs={'pi': self.pi, 'v': self.v})
 
-        def update():
-            inputs = {k: v for k, v in zip(all_phs, buf.get())}
-            pi_l_old, v_l_old, ent = sess.run([pi_loss, v_loss, approx_ent], feed_dict=inputs)
 
-            # Training
-            for i in range(train_pi_iters):
-                _, kl = sess.run([train_pi, approx_kl], feed_dict=inputs)
-                kl = mpi_avg(kl)
-                if kl > 1.5 * target_kl:
-                    logger.log('Early stopping at step %d due to reaching max kl.' % i)
-                    break
-            logger.store(StopIter=i)
-            for _ in range(train_v_iters):
-                sess.run(train_v, feed_dict=inputs)
+        #===============================#
+        # Initialize iteration counters #
+        #===============================#
+        self.epoch_cnt = 0
+        self.step_cnt = 0
+        self.ep_ret = 0
+        self.ep_len = 0
+        # o, r, d, ep_ret, ep_len = env.reset(), 0, False, 0, 0
+        self.start_time = time.time()
 
-            # Log changes from update
-            pi_l_new, v_l_new, kl, cf = sess.run([pi_loss, v_loss, approx_kl, clipfrac], feed_dict=inputs)
-            logger.store(LossPi=pi_l_old, LossV=v_l_old,
-                         KL=kl, Entropy=ent, ClipFrac=cf,
-                         DeltaLossPi=(pi_l_new - pi_l_old),
-                         DeltaLossV=(v_l_new - v_l_old))
 
-        start_time = time.time()
-        o, r, d, ep_ret, ep_len = env.reset(), 0, False, 0, 0
+    def interact(self, o, r, d=False):
+        """
+        Receive observation and produce action
 
-        # Main loop: collect experience in env and update/log each epoch
-        for epoch in range(epochs):
-            for t in range(local_steps_per_epoch):
-                a, v_t, logp_t = sess.run(get_action_ops, feed_dict={x_ph: o.reshape(1, -1)})
+        """
+        a, v_t, logp_t = self.sess.run(self.get_action_ops, feed_dict={self.x_ph: o.reshape(1, -1)})
 
-                # save and log
-                buf.store(o, a, r, v_t, logp_t)
-                logger.store(VVals=v_t)
+        # save and log
+        self.buf.store(o, a, r, v_t, logp_t)
+        self.logger.store(VVals=v_t)
 
-                o, r, d, _ = env.step(a[0])
-                ep_ret += r
-                ep_len += 1
+        o, r, d, _ = self.env.step(a[0])
+        self.ep_ret += r
+        self.ep_len += 1
 
-                terminal = d or (ep_len == max_ep_len)
-                if terminal or (t == local_steps_per_epoch - 1):
-                    if not (terminal):
-                        print('Warning: trajectory cut off by epoch at %d steps.' % ep_len)
-                    # if trajectory didn't reach terminal state, bootstrap value target
-                    last_val = r if d else sess.run(v, feed_dict={x_ph: o.reshape(1, -1)})
-                    buf.finish_path(last_val)
-                    if terminal:
-                        # only save EpRet / EpLen if trajectory finished
-                        logger.store(EpRet=ep_ret, EpLen=ep_len)
-                    o, r, d, ep_ret, ep_len = env.reset(), 0, False, 0, 0
+        terminal = d or (self.ep_len == self.max_ep_len)
+        if terminal or (self.step_cnt == self.local_steps_per_epoch - 1):
+            if not (terminal):
+                print('Warning: trajectory cut off by epoch at %d steps.' % self.ep_len)
+            # if trajectory didn't reach terminal state, bootstrap value target
+            last_val = r if d else self.sess.run(self.v, feed_dict={self.x_ph: o.reshape(1, -1)})
+            self.buf.finish_path(last_val)
+            if terminal:
+                # only save EpRet / EpLen if trajectory finished
+                self.logger.store(EpRet=self.ep_ret, EpLen=self.ep_len)
+            o, r, d, ep_ret, ep_len = self.env.reset(), 0, False, 0, 0
 
-            # Save model
-            if (epoch % save_freq == 0) or (epoch == epochs - 1):
-                logger.save_state({'env': env}, None)
-
+        self.step_cnt += 1
+        if self.step_cnt >= self.local_steps_per_epoch:
             # Perform PPO update!
-            update()
+            self.update()
 
             # Log info about epoch
-            logger.log_tabular('Epoch', epoch)
-            logger.log_tabular('EpRet', with_min_and_max=True)
-            logger.log_tabular('EpLen', average_only=True)
-            logger.log_tabular('VVals', with_min_and_max=True)
-            logger.log_tabular('TotalEnvInteracts', (epoch + 1) * steps_per_epoch)
-            logger.log_tabular('LossPi', average_only=True)
-            logger.log_tabular('LossV', average_only=True)
-            logger.log_tabular('DeltaLossPi', average_only=True)
-            logger.log_tabular('DeltaLossV', average_only=True)
-            logger.log_tabular('Entropy', average_only=True)
-            logger.log_tabular('KL', average_only=True)
-            logger.log_tabular('ClipFrac', average_only=True)
-            logger.log_tabular('StopIter', average_only=True)
-            logger.log_tabular('Time', time.time() - start_time)
-            logger.dump_tabular()
+            self.logger.log_tabular('Epoch', self.epoch_cnt)
+            self.logger.log_tabular('EpRet', with_min_and_max=True)
+            self.logger.log_tabular('EpLen', average_only=True)
+            self.logger.log_tabular('VVals', with_min_and_max=True)
+            self.logger.log_tabular('TotalEnvInteracts', (self.epoch_cnt + 1) * self.steps_per_epoch)
+            self.logger.log_tabular('LossPi', average_only=True)
+            self.logger.log_tabular('LossV', average_only=True)
+            self.logger.log_tabular('DeltaLossPi', average_only=True)
+            self.logger.log_tabular('DeltaLossV', average_only=True)
+            self.logger.log_tabular('Entropy', average_only=True)
+            self.logger.log_tabular('KL', average_only=True)
+            self.logger.log_tabular('ClipFrac', average_only=True)
+            self.logger.log_tabular('StopIter', average_only=True)
+            self.logger.log_tabular('Time', time.time() - self.start_time)
+            self.logger.dump_tabular()
+
+            self.step_cnt = 0
+            self.epoch_cnt += 1
+
+        if self.epoch_cnt >= self.epochs:
+            self.stop()
+
+
+    def update(self):
+        inputs = {k: v for k, v in zip(self.all_phs, self.buf.get())}
+        pi_l_old, v_l_old, ent = self.sess.run([self.pi_loss, self.v_loss, self.approx_ent], feed_dict=inputs)
+
+        # Training
+        for i in range(self.train_pi_iters):
+            _, kl = self.sess.run([self.train_pi, self.approx_kl], feed_dict=inputs)
+            kl = mpi_avg(kl)
+            if kl > 1.5 * self.target_kl:
+                self.logger.log('Early stopping at step %d due to reaching max kl.' % i)
+                break
+        self.logger.store(StopIter=i)
+        for _ in range(self.train_v_iters):
+            self.sess.run(self.train_v, feed_dict=inputs)
+
+        # Log changes from update
+        pi_l_new, v_l_new, kl, cf = self.sess.run([self.pi_loss, self.v_loss, self.approx_kl, self.clipfrac], feed_dict=inputs)
+        self.logger.store(LossPi=pi_l_old, LossV=v_l_old,
+                     KL=kl, Entropy=ent, ClipFrac=cf,
+                     DeltaLossPi=(pi_l_new - pi_l_old),
+                     DeltaLossV=(v_l_new - v_l_old))
+
+    def stop(self):
+        """
+        Stop learning and store the information
+
+        """
+        # close the tf session
+        self.sess.close()
