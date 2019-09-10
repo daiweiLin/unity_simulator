@@ -11,7 +11,6 @@ import sys
 import os
 import numpy as np
 import tensorflow as tf
-import matplotlib.pyplot as plt
 from mlagents.envs import UnityEnvironment
 from mlagents.envs.exception import UnityWorkerInUseException
 from Prescripted_behaviour_timing import *
