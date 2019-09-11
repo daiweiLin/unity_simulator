@@ -225,7 +225,7 @@ if __name__ == '__main__':
 
     train_mode = True  # Whether to run the environment in training or inference mode
     learning_mode = 'Random'  # 'SARA', 'PLA', 'Random'
-    alg = 'ppo'  # 'ddpg','ppo', 'td3'
+    alg = 'ddpg'  # 'ddpg','ppo', 'td3'
     n_visitors = 1
 
     is_sharcnet = False
@@ -233,8 +233,9 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         is_sharcnet = sys.argv[1] == "True"
         learning_mode = sys.argv[2]
-        n_visitors = int(sys.argv[3])
-        job_id = sys.argv[4]
+        alg = sys.argv[3]
+        n_visitors = int(sys.argv[4])
+        job_id = sys.argv[5]
 
     if is_sharcnet:
         interact_with_app = True

@@ -255,13 +255,13 @@ class SpinUpPPOAgent:
         dict_args['cpu'] = 4 # MPI
         dict_args['exp_name'] = 'ppo'
 
-        dict_args['epochs'] = 2
-        dict_args['steps_per_epoch'] = 200 # default 4000
+        dict_args['epochs'] = 1000
+        dict_args['steps_per_epoch'] = 50 # default 4000
         dict_args['pi_lr'] = 3e-4
         dict_args['vf_lr'] = 1e-3
         dict_args['train_pi_iters'] = 80
         dict_args['train_v_iters'] = 80
-        dict_args['max_ep_len'] = 100 # default 1000, this needs to be the same as steps_per_epoch for Unity environment
+        dict_args['max_ep_len'] = 25 # default 1000, this needs to be the same as steps_per_epoch for Unity environment
         dict_args['target_kl'] = 0.01
         dict_args['clip_ratio'] = 0.2
         dict_args['lam'] = 0.97
