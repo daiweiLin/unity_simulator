@@ -1,5 +1,13 @@
 """
+
+Created on 2019-09-11
+Author: Daiwei Lin
+
 Learning agent using PPO by OpenAI Spinning Up
+
+Adapted from spinup/algos/ppo/ppo.py
+1. Wrap ppo() method into PPOAgent class
+2. Use PPOBuffer from original ppo.py file
 
 """
 import time
@@ -17,50 +25,47 @@ from spinup.utils.logx import EpochLogger
 from spinup.utils.mpi_tf import MpiAdamOptimizer, sync_all_params
 from spinup.utils.mpi_tools import mpi_fork, mpi_avg, proc_id, mpi_statistics_scalar, num_procs
 from spinup.utils.run_utils import setup_logger_kwargs
-# from LASAgent.LASBaselineAgent import InternalEnvironment
+from LASAgent.InternalEnvironment import InternalEnvironment
 
 
-# class LASSpinUpPPOAgent:
-#
-#     def __init__(self, agent_name, observation_dim, action_dim, num_observation=20, env=None, env_type='Unity',
-#                  load_pretrained_agent_flag=False, save_dir=None):
-#         self.ppo_agent = SpinUpPPOAgent(env)
-#         self.internal_env = InternalEnvironment(observation_dim, action_dim, num_observation)
-#
-#     def feed_observation(self,observation):
-#         """
-#         Diagram of structure:
-#
-#         -----------------------------------------------------------------
-#         |                                             LASSpinUpPPOAgent  |
-#         |                                                                |
-#         |  action,flag         observation                               |
-#         |    /\                    |                                     |
-#         |    |                    \/                                     |
-#         |  -------------------------------                               |
-#         |  |    Internal Environment     |                               |
-#         |  -------------------------------                               |
-#         |   /\                     |  Flt observation, reward, flag      |
-#         |   |  action             \/                                     |
-#         |  ---------------------------                                   |
-#         |  |      SpinUpPPO agent     |                                  |
-#         |  ---------------------------                                   |
-#         |                                                                |
-#         ------------------------------------------------------------------
-#
-#         """
-#         take_action_flag = 0
-#
-#         is_new_observation, filtered_observation, reward = self.internal_env.feed_observation(observation)
-#         if is_new_observation:
-#             action = self.ppo_agent.interact(filtered_observation, reward, d=False)
-#             take_action_flag = 1
-#             return take_action_flag, action
-#         else:
-#             return take_action_flag, []
-#
-#     # def stop(self):
-#     #     self.ppo_agent.stop()
+class LASSpinUpPPOAgent:
+
+    def __init__(self, agent_name, observation_dim, action_dim, num_observation=20, env=None, env_type='Unity',
+                 load_pretrained_agent_flag=False, save_dir=None):
+        self.ppo_agent = SpinUpPPOAgent(agent_name, observation_dim, action_dim, env, env_type, save_dir)
+        self.internal_env = InternalEnvironment(observation_dim, action_dim, num_observation)
+
+    def feed_observation(self, observation, reward=0, done=False):
+        """
+        Diagram of structure:
+
+        ------------------------------------------------------------------
+        |                                             LASSpinUpPPOAgent  |
+        |                                                                |
+        |  action,flag         observation                               |
+        |    /\                    |                                     |
+        |    |                    \/                                     |
+        |  -------------------------------                               |
+        |  |    Internal Environment     |                               |
+        |  -------------------------------                               |
+        |   /\                     |  Flt observation, reward, flag      |
+        |   |  action             \/                                     |
+        |  ---------------------------                                   |
+        |  |      SpinUpPPO agent     |                                  |
+        |  ---------------------------                                   |
+        |                                                                |
+        ------------------------------------------------------------------
+
+        """
+
+        is_new_observation, filtered_observation, reward = self.internal_env.feed_observation(observation)
+        if is_new_observation:
+            action = self.ppo_agent.interact(filtered_observation, reward, d=done)  # action, reset = self.ppo_agent.interact(filtered_observation, reward, d=done)
+            take_action_flag = 1
+            return take_action_flag, action  # , reset
+        else:
+            take_action_flag = 0
+            return take_action_flag, []  # , False
 
 
 class SpinUpPPOAgent:
@@ -72,7 +77,7 @@ class SpinUpPPOAgent:
     with early stopping based on approximate KL
     """
 
-    def __init__(self, env, actor_critic=core.mlp_actor_critic):
+    def __init__(self, agent_name, observation_dim, action_dim, env, env_type, save_dir, actor_critic=core.mlp_actor_critic):
         """
         Args:
             env : A function which creates a copy of the environment.
@@ -125,13 +130,14 @@ class SpinUpPPOAgent:
             save_freq (int): How often (in terms of gap between epochs) to save
                 the current policy and value function.
         """
+        self.agent_name = agent_name
         # ============ #
         #  Parameters  #
         # ============ #
         args = self.parse_args()
         # mpi_fork(args['cpu'])  # run parallel code with mpi
 
-        logger_kwargs = setup_logger_kwargs(args['exp_name'], args['seed'])
+        logger_kwargs = setup_logger_kwargs(exp_name=args['exp_name'], seed=args['seed'], data_dir=save_dir, )
         ac_kwargs = args['ac_kwargs']
 
         self.epochs = args['epochs']
@@ -148,21 +154,36 @@ class SpinUpPPOAgent:
         self.save_freq = args['save_freq']
 
         self.logger = EpochLogger(**logger_kwargs)
-        self.logger.save_config(locals())
+        # Disabled because this will cause trouble when interacting with Unity. For its function, see https://spinningup.openai.com/en/latest/utils/logger.html#spinup.utils.logx.Logger.save_config
+        # self.logger.save_config(locals())
 
         self.seed = args['seed'] + 10000 * proc_id()
         tf.set_random_seed(self.seed)
         np.random.seed(self.seed)
 
         self.env = env
-        obs_dim = env.observation_space.shape
-        act_dim = env.action_space.shape
+        if env_type == "Unity":
+            obs_max = np.array([1.] * observation_dim)
+            obs_min = np.array([-1] * observation_dim)
+            act_max = np.array([1] * action_dim)
+            act_min = np.array([-1] * action_dim)
+
+            self.observation_space = spaces.Box(obs_min, obs_max, dtype=np.float32)
+            self.action_space = spaces.Box(act_min, act_max, dtype=np.float32)
+            obs_dim = self.observation_space.shape
+            act_dim = self.action_space.shape
+        else:
+            # Gym environment
+            obs_dim = env.observation_space.shape
+            act_dim = env.action_space.shape
+            self.action_space = env.action_space
+            self.observation_space = env.observation_space
 
         # Share information about action space with policy architecture
-        ac_kwargs['action_space'] = self.env.action_space
+        ac_kwargs['action_space'] = self.action_space
 
         # Inputs to computation graph
-        self.x_ph, self.a_ph = core.placeholders_from_spaces(self.env.observation_space, self.env.action_space)
+        self.x_ph, self.a_ph = core.placeholders_from_spaces(self.observation_space, self.action_space)
         self.adv_ph, self.ret_ph, self.logp_old_ph = core.placeholders(None, None, None)
 
         # Main outputs from computation graph
@@ -234,13 +255,13 @@ class SpinUpPPOAgent:
         dict_args['cpu'] = 4 # MPI
         dict_args['exp_name'] = 'ppo'
 
-        dict_args['epochs'] = 50
-        dict_args['steps_per_epoch'] = 4000
+        dict_args['epochs'] = 2
+        dict_args['steps_per_epoch'] = 200 # default 4000
         dict_args['pi_lr'] = 3e-4
         dict_args['vf_lr'] = 1e-3
         dict_args['train_pi_iters'] = 80
         dict_args['train_v_iters'] = 80
-        dict_args['max_ep_len'] = 1000
+        dict_args['max_ep_len'] = 100 # default 1000, this needs to be the same as steps_per_epoch for Unity environment
         dict_args['target_kl'] = 0.01
         dict_args['clip_ratio'] = 0.2
         dict_args['lam'] = 0.97
@@ -278,7 +299,7 @@ class SpinUpPPOAgent:
             if terminal:
                 # only save EpRet / EpLen if trajectory finished
                 self.logger.store(EpRet=self.ep_ret, EpLen=self.ep_len)
-            env_reset =True
+            # env_reset =True
             self.ep_ret = 0
             self.ep_len = 0
             # o, r, d, self.ep_ret, self.ep_len = self.env.reset(), 0, False, 0, 0
@@ -311,7 +332,7 @@ class SpinUpPPOAgent:
         if self.epoch_cnt >= self.epochs:
             self.stop()
 
-        return a[0], env_reset
+        return a[0]  #, env_reset
 
     def update(self):
         inputs = {k: v for k, v in zip(self.all_phs, self.buf.get())}

@@ -17,6 +17,7 @@ from Prescripted_behaviour_timing import *
 from LASAgent.LASBaselineAgent import *
 from Visitor_behaviour import *
 from LASAgent.LASRandomAgent import *
+from LASAgent.LASSpinUpPPOAgent import *
 
 
 def LAS_behavior(p, action_dimension):
@@ -26,9 +27,10 @@ def LAS_behavior(p, action_dimension):
         return np.zeros(action_dimension)
 
 
-def init(mode, num_visitors, unity_dir, save_dir, no_graphics=False, interact_with_app=True):
+def init(mode, algorithm, num_visitors, unity_dir, save_dir, no_graphics=False, interact_with_app=True):
     """
     :param mode: Random, SARA or PLA
+    :param algorithm: 'ddpg', 'ppo' and 'td3'
     :param num_visitors: 1 or 5
     :param unity_dir:
     :param no_graphics: True if running jobs on SHARCNET
@@ -76,14 +78,22 @@ def init(mode, num_visitors, unity_dir, save_dir, no_graphics=False, interact_wi
         behaviour = Behaviour(ROM_sculpture, system_freq=10)
 
         # initialize ml agent
-        agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=11, num_observation=10,
+        if algorithm == 'ddpg':
+            agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=11, num_observation=10,
                                  env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
+        else:
+            agent = LASSpinUpPPOAgent('SpinUP_PPO_Agent', observation_dim=24, action_dim=168, num_observation=1,
+                                  env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
         return env, visitor_bh, agent, behaviour
 
     elif mode == 'SARA':
         # initialize ml agent
-        agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=168, num_observation=10,
-                                 env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
+        if algorithm == 'ddpg':
+            agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=168, num_observation=10,
+                                     env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
+        else:
+            agent = LASSpinUpPPOAgent('SpinUP_PPO_Agent', observation_dim=24, action_dim=168, num_observation=1,
+                                  env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
         return env, visitor_bh, agent, None
     elif mode == 'Random':
         # initialize random action agent
@@ -92,7 +102,7 @@ def init(mode, num_visitors, unity_dir, save_dir, no_graphics=False, interact_wi
         return env, visitor_bh, agent, None
 
 
-def run(mode, behaviour, agent, visitors_behaviour):
+def run(mode, algorithm, behaviour, agent, visitors_behaviour):
 
     if visitors_behaviour.num_visitors > 1:
         visitor_brain_name = 'GroupVisitorBrain'
@@ -114,9 +124,11 @@ def run(mode, behaviour, agent, visitors_behaviour):
     take_action_flag = 1  # switch for debugging
 
     if mode == 'PLA':
-
-        total_steps = agent.baseline_agent.nb_epochs * agent.baseline_agent.nb_epoch_cycles * \
-                      agent.baseline_agent.nb_rollout_steps
+        if algorithm == 'ddpg':
+            total_steps = agent.baseline_agent.nb_epochs * agent.baseline_agent.nb_epoch_cycles * \
+                          agent.baseline_agent.nb_rollout_steps
+        else:
+            total_steps = agent.ppo_agent.local_steps_per_epoch * agent.ppo_agent.epochs
         s = 0
         while s <= total_steps - 1:
 
@@ -150,10 +162,13 @@ def run(mode, behaviour, agent, visitors_behaviour):
             done = env_info[LAS_brain_name].local_done[0]
 
     elif mode == 'SARA':
-
-        total_steps = agent.baseline_agent.nb_epochs * agent.baseline_agent.nb_epoch_cycles * \
-                      agent.baseline_agent.nb_rollout_steps
-        LAS_action = agent.baseline_agent.action_space.sample().tolist() + [take_action_flag]
+        if algorithm == 'ddpg':
+            total_steps = agent.baseline_agent.nb_epochs * agent.baseline_agent.nb_epoch_cycles * \
+                          agent.baseline_agent.nb_rollout_steps
+            LAS_action = agent.baseline_agent.action_space.sample().tolist() + [take_action_flag]
+        else:
+            total_steps = agent.ppo_agent.local_steps_per_epoch * agent.ppo_agent.epochs
+            LAS_action = agent.ppo_agent.action_space.sample().tolist() + [take_action_flag]
         s = 0
         while s <= total_steps - 1:
 
@@ -210,6 +225,7 @@ if __name__ == '__main__':
 
     train_mode = True  # Whether to run the environment in training or inference mode
     learning_mode = 'Random'  # 'SARA', 'PLA', 'Random'
+    alg = 'ppo'  # 'ddpg','ppo', 'td3'
     n_visitors = 1
 
     is_sharcnet = False
@@ -228,7 +244,7 @@ if __name__ == '__main__':
         else:
             unity_dir = 'unity_executable/single_visitor/LAS_Simulator'
     else:
-        interact_with_app = False
+        interact_with_app = True
         no_graphics = False
         unity_dir = 'LAS-Scenes/Unity/LAS_Simulator'
 
@@ -238,8 +254,8 @@ if __name__ == '__main__':
     print("Training Case Parameters:")
     print("Is_sharcnet={}, training_mode={}, learning_mode={}, number_of_visitors={}, interact_with_app={}".format(is_sharcnet, train_mode, learning_mode, n_visitors, interact_with_app))
 
-    env, visitors_bh, agent, bh = init(mode=learning_mode, num_visitors=n_visitors,
+    env, visitors_bh, agent, bh = init(mode=learning_mode, algorithm=alg, num_visitors=n_visitors,
                                        unity_dir=unity_dir, no_graphics=no_graphics,
                                        interact_with_app=interact_with_app,
                                        save_dir=save_dir)
-    run(mode=learning_mode, behaviour=bh, agent=agent, visitors_behaviour=visitors_bh)
+    run(mode=learning_mode,algorithm=alg, behaviour=bh, agent=agent, visitors_behaviour=visitors_bh)
