@@ -253,17 +253,20 @@ class Behaviour:
         self.idle_timer = 0.0
         self.propagate_timer = 0.0
 
-        self.propagation_list = list() # a list of propagation chains. Each chain represent one propagation trajectory.
-        self.propagation_cooldown = 0.5 # <== Manually set to 0.5 second
+        self.propagation_list = list()  # a list of propagation chains. Each chain represent one propagation trajectory.
+        self.propagation_cooldown = 0.5  # <== Manually set to 0.5 second
         self.propagation_start_t = [0.0]*self.sculpture.num_nodes
 
         self.n_gap = 2
         self.t_sma = 5
 
-        self.time_scale = 10 / system_freq
-        self.para_mapping_scale = np.array([2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 1.0, 2.5, 2.5, 2.5, 2.0]) * np.array(
-                                            [1, 1, 1, 1, 1, 1, 1, self.time_scale, self.time_scale, self.time_scale, self.time_scale])
+        self.sys_time_scale = 10 / system_freq # reality/simulation
+        # map actions from [-1, 1] to the range defined in paper Table.1
+        self.para_mapping_scale = np.array([2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 1.0, 2.5, 2.5, 2.5, 2.0])
         self.para_mapping_offset = np.array([2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 1.0, 2.5, 2.5, 2.5, 3])
+        # then shrink the time-related parameters by self.time_scale.
+        self.para_mapping_time = np.ones((11,))*self.sys_time_scale
+        self.para_mapping_time[6] = 1
 
         print("Behaviour initialized.")
 
@@ -273,7 +276,7 @@ class Behaviour:
         :param para:[led_ru, led_ho, led_rd, moth_ru, moth_ho, moth_rd, I_max, ml_gap, sma_gap, n_gap, t_sma]
         """
 
-        para = para * self.para_mapping_scale + self.para_mapping_offset
+        para = (para * self.para_mapping_scale + self.para_mapping_offset) * self.para_mapping_time
         self.n_gap = para[9]
         self.t_sma = para[10]
         for node in self.sculpture.node_list:

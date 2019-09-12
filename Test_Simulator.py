@@ -75,29 +75,29 @@ def init(mode, algorithm, num_visitors, unity_dir, save_dir, no_graphics=False, 
     if mode == 'PLA':
         # initialize pre-scripted behaviour class
         ROM_sculpture = Sculpture(node_num=24, sma_num=6, led_num=1, moth_num=1)
-        behaviour = Behaviour(ROM_sculpture, system_freq=10)
+        behaviour = Behaviour(ROM_sculpture, system_freq=50)
 
         # initialize ml agent
         if algorithm == 'ddpg':
-            agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=11, num_observation=10,
+            agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=11, num_observation=25,
                                  env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
         else:
-            agent = LASSpinUpPPOAgent('SpinUP_PPO_Agent', observation_dim=24, action_dim=168, num_observation=1,
+            agent = LASSpinUpPPOAgent('SpinUP_PPO_Agent', observation_dim=24, action_dim=11, num_observation=25,
                                   env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
         return env, visitor_bh, agent, behaviour
 
     elif mode == 'SARA':
         # initialize ml agent
         if algorithm == 'ddpg':
-            agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=168, num_observation=10,
+            agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=168, num_observation=25,
                                      env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
         else:
-            agent = LASSpinUpPPOAgent('SpinUP_PPO_Agent', observation_dim=24, action_dim=168, num_observation=1,
+            agent = LASSpinUpPPOAgent('SpinUP_PPO_Agent', observation_dim=24, action_dim=168, num_observation=25,
                                   env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
         return env, visitor_bh, agent, None
     elif mode == 'Random':
         # initialize random action agent
-        agent = LASRandomAgent('RandomAgent', observation_dim=24, action_dim=168, num_observation=10, env=env,
+        agent = LASRandomAgent('RandomAgent', observation_dim=24, action_dim=168, num_observation=25, env=env,
                                env_type='Unity', save_dir=save_dir)
         return env, visitor_bh, agent, None
 
