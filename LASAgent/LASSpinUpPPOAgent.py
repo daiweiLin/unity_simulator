@@ -131,13 +131,19 @@ class SpinUpPPOAgent:
                 the current policy and value function.
         """
         self.agent_name = agent_name
+
+
         # ============ #
         #  Parameters  #
         # ============ #
         args = self.parse_args()
         # mpi_fork(args['cpu'])  # run parallel code with mpi
 
-        logger_kwargs = setup_logger_kwargs(exp_name=args['exp_name'], seed=args['seed'], data_dir=save_dir, )
+        self.seed = args['seed'] + 10000 * proc_id()
+        tf.set_random_seed(int(time.time()))
+        np.random.seed(int(time.time()))
+
+        logger_kwargs = setup_logger_kwargs(exp_name=args['exp_name'], seed=args['seed'], data_dir=save_dir)
         ac_kwargs = args['ac_kwargs']
 
         self.epochs = args['epochs']
@@ -157,9 +163,7 @@ class SpinUpPPOAgent:
         # Disabled because this will cause trouble when interacting with Unity. For its function, see https://spinningup.openai.com/en/latest/utils/logger.html#spinup.utils.logx.Logger.save_config
         # self.logger.save_config(locals())
 
-        self.seed = args['seed'] + 10000 * proc_id()
-        tf.set_random_seed(self.seed)
-        np.random.seed(self.seed)
+
 
         self.env = env
         if env_type == "Unity":
@@ -197,6 +201,7 @@ class SpinUpPPOAgent:
 
         # Experience buffer
         self.local_steps_per_epoch = int(self.steps_per_epoch / num_procs())
+        # print("MPI size={}".format(num_procs()))
         self.buf = PPOBuffer(obs_dim, act_dim, self.local_steps_per_epoch, self.gamma, self.lam)
 
         # Count variables
@@ -251,17 +256,17 @@ class SpinUpPPOAgent:
         dict_args['hid'] = 64 # size of each hidden layer
         dict_args['l'] = 2 # number of layers
 
-        dict_args['seed'] = 0
+        dict_args['seed'] = 0  # Discard as this will cause identical results for PLA
         dict_args['cpu'] = 4 # MPI
         dict_args['exp_name'] = 'ppo'
 
         dict_args['epochs'] = 1000
-        dict_args['steps_per_epoch'] = 50 # default 4000
+        dict_args['steps_per_epoch'] = 25  # default 4000
         dict_args['pi_lr'] = 3e-4
         dict_args['vf_lr'] = 1e-3
-        dict_args['train_pi_iters'] = 80
-        dict_args['train_v_iters'] = 80
-        dict_args['max_ep_len'] = 25 # default 1000, this needs to be the same as steps_per_epoch for Unity environment
+        dict_args['train_pi_iters'] = 5  # default 80
+        dict_args['train_v_iters'] = 5  # default 80
+        dict_args['max_ep_len'] = 25  # default 1000, this needs to be the same as steps_per_epoch for Unity environment
         dict_args['target_kl'] = 0.01
         dict_args['clip_ratio'] = 0.2
         dict_args['lam'] = 0.97

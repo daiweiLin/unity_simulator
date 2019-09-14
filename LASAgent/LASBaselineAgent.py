@@ -511,9 +511,9 @@ class BaselineAgent:
         dict_args['gamma'] = 0.99
         dict_args['reward_scale'] = 1.
         dict_args['clip_norm'] = None
-        dict_args['nb_epochs'] = 2000
+        dict_args['nb_epochs'] = 1000
         dict_args['nb_epoch_cycles'] = 1
-        dict_args['nb_train_steps'] = 20
+        dict_args['nb_train_steps'] = 5
         dict_args['nb_eval_steps'] = 100
         dict_args['nb_rollout_steps'] = 25
         dict_args['noise_type'] = 'adaptive-param_0.2'

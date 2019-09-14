@@ -224,7 +224,7 @@ def run(mode, algorithm, behaviour, agent, visitors_behaviour):
 if __name__ == '__main__':
 
     train_mode = True  # Whether to run the environment in training or inference mode
-    learning_mode = 'Random'  # 'SARA', 'PLA', 'Random'
+    learning_mode = 'PLA'  # 'SARA', 'PLA', 'Random'
     alg = 'ddpg'  # 'ddpg','ppo', 'td3'
     n_visitors = 1
 
@@ -259,4 +259,4 @@ if __name__ == '__main__':
                                        unity_dir=unity_dir, no_graphics=no_graphics,
                                        interact_with_app=interact_with_app,
                                        save_dir=save_dir)
-    run(mode=learning_mode,algorithm=alg, behaviour=bh, agent=agent, visitors_behaviour=visitors_bh)
+    run(mode=learning_mode, algorithm=alg, behaviour=bh, agent=agent, visitors_behaviour=visitors_bh)
