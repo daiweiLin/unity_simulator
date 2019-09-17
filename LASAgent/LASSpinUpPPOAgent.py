@@ -154,13 +154,14 @@ class SpinUpPPOAgent:
         self.train_v_iters = args['train_v_iters']
         self.max_ep_len = args['max_ep_len']
         self.target_kl = args['target_kl']
-        self.clip_ratio = args['clip_ratio'] = 0.2
-        self.lam = args['lam'] = 0.97
-        self.gamma = args['gamma'] = 0.99
+        self.clip_ratio = args['clip_ratio']
+        self.lam = args['lam']
+        self.gamma = args['gamma']
         self.save_freq = args['save_freq']
 
         self.logger = EpochLogger(**logger_kwargs)
-        # Disabled because this will cause trouble when interacting with Unity. For its function, see https://spinningup.openai.com/en/latest/utils/logger.html#spinup.utils.logx.Logger.save_config
+        # Disabled because this will cause trouble when interacting with Unity.
+        # For its function, see https://spinningup.openai.com/en/latest/utils/logger.html#spinup.utils.logx.Logger.save_config
         # self.logger.save_config(locals())
 
 

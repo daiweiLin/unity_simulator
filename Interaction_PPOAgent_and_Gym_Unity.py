@@ -15,7 +15,7 @@ from mlagents.envs.exception import UnityWorkerInUseException
 from Prescripted_behaviour_timing import *
 from LASAgent.LASSpinUpPPOAgent import *
 from Visitor_behaviour import *
-# from LASAgent.LASRandomAgent import *
+from LASAgent.LASSpinUpTD3Agent import *
 import gym
 
 
@@ -42,19 +42,19 @@ def init(mode, num_visitors, unity_dir, save_dir, no_graphics=False, interact_wi
 
     # Initialized unity environment. Each environment requires an unique worker_id.
     worker_id = 0
-    while worker_id < 10:
-        try:
-            env = UnityEnvironment(file_name=env_name, seed=1, no_graphics=no_graphics, worker_id=worker_id)
-        except UnityWorkerInUseException:
-            print("Worker ID {} is in use.".format(worker_id))
-            worker_id += 1
-        except Exception as e:
-            print("Other exceptions:{}".format(e))
-        else:
-            print("UnityEnvironment initialized with worker_id={}".format(worker_id))
-            break
+    # while worker_id < 10:
+    #     try:
+    #         env = UnityEnvironment(file_name=env_name, seed=1, no_graphics=no_graphics, worker_id=worker_id)
+    #     except UnityWorkerInUseException:
+    #         print("Worker ID {} is in use.".format(worker_id))
+    #         worker_id += 1
+    #     except Exception as e:
+    #         print("Other exceptions:{}".format(e))
+    #     else:
+    #         print("UnityEnvironment initialized with worker_id={}".format(worker_id))
+    #         break
     #==== for Gym env =============#
-    # env = gym.make("CartPole-v1")
+    env = gym.make("Pendulum-v0")
     # =============================#
     save_dir = save_dir + "-" + str(worker_id)
 
@@ -73,19 +73,19 @@ def init(mode, num_visitors, unity_dir, save_dir, no_graphics=False, interact_wi
     os.environ['OPENAI_LOGDIR'] = summary_path
     os.environ['OPENAI_LOG_FORMAT'] = 'stdout,tensorboard'
 
-    if mode == 'PLA':
-        # initialize pre-scripted behaviour class
-        ROM_sculpture = Sculpture(node_num=24, sma_num=6, led_num=1, moth_num=1)
-        behaviour = Behaviour(ROM_sculpture, system_freq=10)
+    # if mode == 'PLA':
+    #     # initialize pre-scripted behaviour class
+    #     ROM_sculpture = Sculpture(node_num=24, sma_num=6, led_num=1, moth_num=1)
+    #     behaviour = Behaviour(ROM_sculpture, system_freq=10)
+    #
+    #     # initialize ml agent
+    #     agent = SpinUpPPOAgent(env=env)
+    #     return env, visitor_bh, agent, behaviour
 
+    if mode == 'SARA':
         # initialize ml agent
-        agent = SpinUpPPOAgent(env=env)
-        return env, visitor_bh, agent, behaviour
-
-    elif mode == 'SARA':
-        # initialize ml agent
-        agent = LASSpinUpPPOAgent('SpinUP PPO Agent', observation_dim=24, action_dim=168, num_observation=1,
-                                 env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
+        agent = LASSpinUpTD3Agent('SpinUP PPO Agent', observation_dim=3, action_dim=1, num_observation=1,
+                                 env=env, env_type='Gym', load_pretrained_agent_flag=False, save_dir=save_dir)
         return env, visitor_bh, agent, None
     # elif mode == 'Random':
     #     # initialize random action agent
@@ -96,66 +96,63 @@ def init(mode, num_visitors, unity_dir, save_dir, no_graphics=False, interact_wi
 
 def run(mode, behaviour, agent, visitors_behaviour):
 
-    if visitors_behaviour.num_visitors > 1:
-        visitor_brain_name = 'GroupVisitorBrain'
-    else:
-        visitor_brain_name = 'VisitorBrain'
-    LAS_brain_name = 'LASBrain'
+    # if visitors_behaviour.num_visitors > 1:
+    #     visitor_brain_name = 'GroupVisitorBrain'
+    # else:
+    #     visitor_brain_name = 'VisitorBrain'
+    # LAS_brain_name = 'LASBrain'
 
-    print("Learning:")
-    env_info = env.reset(train_mode=train_mode)
-
-    coordinates = env_info[visitor_brain_name].vector_observations[0][24:72]
-    visitors_behaviour.setup(coordinates)
-
-    observation = env_info[LAS_brain_name].vector_observations[0]
-    done = False
-    reward = 0
-    simulator_time = observation[-1]
-    observation = observation[0:-1]
+    # print("Learning:")
+    # env_info = env.reset(train_mode=train_mode)
+    #
+    # coordinates = env_info[visitor_brain_name].vector_observations[0][24:72]
+    # visitors_behaviour.setup(coordinates)
+    #
+    # observation = env_info[LAS_brain_name].vector_observations[0]
+    # done = False
+    # reward = 0
+    # simulator_time = observation[-1]
+    # observation = observation[0:-1]
     take_action_flag = 1  # switch for debugging
 
     #========== For Gym environment only ========================#
-    # observation, reward, done, info = env.reset(), 0, False, ""
+    observation, reward, done, info = env.reset(), 0, False, ""
     #============================================================#
     if mode == 'PLA':
         print("mode in PLA")
 
     elif mode == 'SARA':
 
-        total_steps = agent.ppo_agent.local_steps_per_epoch * agent.ppo_agent.epochs
-        LAS_action = agent.ppo_agent.action_space.sample().tolist() + [take_action_flag]
+        total_steps = agent.spinup_agent.total_steps
+        LAS_action = agent.spinup_agent.action_space.sample().tolist() + [take_action_flag]
         s = 0
         while s <= total_steps - 1:
             #=============[ For Unity environment only ]============================================#
-            take_SARA_action_flag, new_LAS_action = agent.feed_observation(observation)
-            if take_SARA_action_flag:
-                LAS_action = new_LAS_action.tolist() + [take_action_flag]
-                s += 1
-
-            Visitor_action = visitors_behaviour.step(env_info[visitor_brain_name].vector_observations[0])
-
-            action = {LAS_brain_name: LAS_action, visitor_brain_name: Visitor_action}
-            # print("LED_Action: {}".format(LAS_action[:24]))
-            env_info = env.step(action)
-
-            reward = env_info[LAS_brain_name].rewards[0]
-            observation = env_info[LAS_brain_name].vector_observations[0]
-            # <use time in simulator>
-            # simulator_time = observation[-1]
-            observation = observation[0:-1]
-            # <end of use time in simulator>
-            done = env_info[LAS_brain_name].local_done[0]
+            # take_SARA_action_flag, new_LAS_action = agent.feed_observation(observation)
+            # if take_SARA_action_flag:
+            #     LAS_action = new_LAS_action.tolist() + [take_action_flag]
+            #     s += 1
+            #
+            # Visitor_action = visitors_behaviour.step(env_info[visitor_brain_name].vector_observations[0])
+            #
+            # action = {LAS_brain_name: LAS_action, visitor_brain_name: Visitor_action}
+            # # print("LED_Action: {}".format(LAS_action[:24]))
+            # env_info = env.step(action)
+            #
+            # reward = env_info[LAS_brain_name].rewards[0]
+            # observation = env_info[LAS_brain_name].vector_observations[0]
+            # # <use time in simulator>
+            # # simulator_time = observation[-1]
+            # observation = observation[0:-1]
+            # # <end of use time in simulator>
+            # done = env_info[LAS_brain_name].local_done[0]
             #=========== End of code for Unity Environment ======================================#
 
             #==========[ For Gym environment Only ]===========================================================#
-            # agent.feed_observation(observation, reward, done)
-            # if take_action_flag:
-            #
-            # # Visitor_action = visitors_behaviour.step(env_info[visitor_brain_name].vector_observations[0])
-            # observation, reward, done, info = env.step(action)
-            # if reset:
-            #     observation, reward, done, info = env.reset(), 0, False, ""
+            take_action_flag, action, reset = agent.feed_observation(observation, reward, done)
+            observation, reward, done, info = env.step(action)
+            if reset:
+                observation, reward, done, info = env.reset(), 0, False, ""
             #========== End of Code for Gym Environment ====================================================#
 
     elif mode == 'Random':
