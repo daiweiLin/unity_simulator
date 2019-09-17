@@ -81,7 +81,7 @@ def init(mode, algorithm, num_visitors, unity_dir, save_dir, no_graphics=False, 
         if algorithm == 'ddpg':
             agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=11, num_observation=25,
                                  env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
-        else:
+        elif algorithm == 'ppo':
             agent = LASSpinUpPPOAgent('SpinUP_PPO_Agent', observation_dim=24, action_dim=11, num_observation=25,
                                   env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
         return env, visitor_bh, agent, behaviour
@@ -91,7 +91,7 @@ def init(mode, algorithm, num_visitors, unity_dir, save_dir, no_graphics=False, 
         if algorithm == 'ddpg':
             agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=168, num_observation=25,
                                      env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
-        else:
+        elif algorithm == 'ppo':
             agent = LASSpinUpPPOAgent('SpinUP_PPO_Agent', observation_dim=24, action_dim=168, num_observation=25,
                                   env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
         return env, visitor_bh, agent, None
@@ -127,8 +127,10 @@ def run(mode, algorithm, behaviour, agent, visitors_behaviour):
         if algorithm == 'ddpg':
             total_steps = agent.baseline_agent.nb_epochs * agent.baseline_agent.nb_epoch_cycles * \
                           agent.baseline_agent.nb_rollout_steps
-        else:
+        elif algorithm == 'ppo':
             total_steps = agent.ppo_agent.local_steps_per_epoch * agent.ppo_agent.epochs
+        else:
+            total_steps = agent.spinup_agent.total_steps
         s = 0
         while s <= total_steps - 1:
 

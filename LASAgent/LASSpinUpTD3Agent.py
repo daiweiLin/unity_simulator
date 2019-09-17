@@ -27,7 +27,7 @@ class LASSpinUpTD3Agent:
 
     def __init__(self, agent_name, observation_dim, action_dim, num_observation=20, env=None, env_type='Unity',
                  load_pretrained_agent_flag=False, save_dir=None):
-        self.spinup_agent = SpinUpTD3Agent(agent_name, observation_dim, action_dim, env, env_type, save_dir)
+        self.td3_agent = SpinUpTD3Agent(agent_name, observation_dim, action_dim, env, env_type, save_dir)
         self.internal_env = InternalEnvironment(observation_dim, action_dim, num_observation)
 
     def feed_observation(self, observation, reward=0, done=False):
@@ -53,11 +53,11 @@ class LASSpinUpTD3Agent:
 
         """
 
-        is_new_observation, filtered_observation, reward = self.internal_env.feed_observation(observation)
+        is_new_observation, filtered_observation, _ = self.internal_env.feed_observation(observation)
         if is_new_observation:
-            action, reset = self.spinup_agent.interact(filtered_observation, reward, d=done)  # action, reset = self.ppo_agent.interact(filtered_observation, reward, d=done)
+            action= self.td3_agent.interact(filtered_observation, reward, d=done)  # action, reset = self.td3_agent.interact(filtered_observation, reward, d=done)
             take_action_flag = 1
-            return take_action_flag, action, reset
+            return take_action_flag, action  #, reset
         else:
             take_action_flag = 0
             return take_action_flag, []  # , False
@@ -155,10 +155,11 @@ class SpinUpTD3Agent:
         self.logger = EpochLogger(**args['logger_kwargs'])
         # Disabled because this will cause trouble when interacting with Unity.
         # For its function, see https://spinningup.openai.com/en/latest/utils/logger.html#spinup.utils.logx.Logger.save_config
-        self.logger.save_config(locals())
+        # self.logger.save_config(locals())
 
 
         self.env, self.test_env = env, env
+        self.env_type = env_type
         if env_type == "Unity":
             obs_max = np.array([1.] * observation_dim)
             obs_min = np.array([-1] * observation_dim)
@@ -177,10 +178,10 @@ class SpinUpTD3Agent:
             self.observation_space = env.observation_space
 
         # Action limit for clamping: critically, assumes all dimensions share the same bound!
-        self.act_limit = env.action_space.high[0]
+        self.act_limit = self.action_space.high[0]
 
         # Share information about action space with policy architecture
-        self.ac_kwargs['action_space'] = env.action_space
+        self.ac_kwargs['action_space'] = self.action_space
 
         # Inputs to computation graph
         self.x_ph, self.a_ph, self.x2_ph, self.r_ph, self.d_ph = core.placeholders(obs_dim, act_dim, obs_dim, None, None)
@@ -243,10 +244,12 @@ class SpinUpTD3Agent:
         self.logger.setup_tf_saver(self.sess, inputs={'x': self.x_ph, 'a': self.a_ph}, outputs={'pi': self.pi, 'q1': self.q1, 'q2': self.q2})
 
         self.start_time = time.time()
-        o, r, d, ep_ret, ep_len = env.reset(), 0, False, 0, 0
+        # o, r, d, ep_ret, ep_len = env.reset(), 0, False, 0, 0
         self.total_steps = self.steps_per_epoch * self.epochs
 
-        # Counters and returns for main loop in interact()
+        ###############################################################
+        # Initialize Counters and returns for main loop in interact() #
+        ###############################################################
         self.step_cnt = 0
         self.ep_len = 0
         self.ep_ret = 0
@@ -262,14 +265,14 @@ class SpinUpTD3Agent:
         """
 
         dict_args = dict()
-        dict_args['hid'] = 300 # size of each hidden layer
-        dict_args['l'] = 1 # number of layers
+        dict_args['hid'] = 300  # default 300 size of each hidden layer
+        dict_args['l'] = 1  # number of layers
         dict_args['seed'] = 0  # Discard as this will cause identical results for PLA
         dict_args['exp_name'] = 'td3'
         dict_args['save_freq'] = 1
 
-        dict_args['epochs'] = 100  # default 100
-        dict_args['steps_per_epoch'] = 5000 # default 5000
+        dict_args['epochs'] = 1000  # default 100
+        dict_args['steps_per_epoch'] = 25 # default 5000
         dict_args['replay_size'] = int(1e6)
         dict_args['polyak'] = 0.995
         dict_args['pi_lr'] = 1e-3
@@ -294,15 +297,27 @@ class SpinUpTD3Agent:
         return np.clip(a, -self.act_limit, self.act_limit)
 
     def test_agent(self, n=10):
-        for j in range(n):
-            o, r, d, ep_ret, ep_len = self.test_env.reset(), 0, False, 0, 0
-            while not (d or (ep_len == self.max_ep_len)):
-                # Take deterministic actions at test time (noise_scale=0)
-                a = self.get_action(o, 0)
-                o, r, d, _ = self.test_env.step(a)
-                ep_ret += r
-                ep_len += 1
-            self.logger.store(TestEpRet=ep_ret, TestEpLen=ep_len)
+        if self.env_type == "Gym":
+            for j in range(n):
+                o, r, d, ep_ret, ep_len = self.test_env.reset(), 0, False, 0, 0
+                while not (d or (ep_len == self.max_ep_len)):
+                    # Take deterministic actions at test time (noise_scale=0)
+                    a = self.get_action(o, 0)
+                    o, r, d, _ = self.test_env.step(a)
+                    ep_ret += r
+                    ep_len += 1
+                self.logger.store(TestEpRet=ep_ret, TestEpLen=ep_len)
+        else:
+            for j in range(n):
+                env_info, r, d, ep_ret, ep_len = self.test_env.reset(), 0, False, 0, 0
+                o = env_info['LASBrain'].vector_observations[0][0:-1]
+                while not (d or (ep_len == self.max_ep_len)):
+                    # Take deterministic actions at test time (noise_scale=0)
+                    a = self.get_action(o, 0)
+                    o, r, d, _ = self.test_env.step(a)
+                    ep_ret += r
+                    ep_len += 1
+                self.logger.store(TestEpRet=ep_ret, TestEpLen=ep_len)
 
     def interact(self, o, r, d):
         # Main loop: collect experience in env and update/log each epoch
@@ -310,7 +325,7 @@ class SpinUpTD3Agent:
         if self.step_cnt > self.start_steps:
             a = self.get_action(o, self.act_noise)
         else:
-            a = self.env.action_space.sample()
+            a = self.action_space.sample()
 
         self.step_cnt += 1
 
@@ -355,8 +370,8 @@ class SpinUpTD3Agent:
 
             self.logger.store(EpRet=self.ep_ret, EpLen=self.ep_len)
             self.ep_ret, self.ep_len = 0, 0
-            env_reset = True
-            # o, r, d = self.env.reset(), 0, False  # <=======================================================change later
+            # env_reset = True
+            # o, r, d = self.env.reset(), 0, False
 
         # End of epoch wrap-up
         if self.step_cnt > 0 and self.step_cnt % self.steps_per_epoch == 0:
@@ -386,7 +401,7 @@ class SpinUpTD3Agent:
         if self.step_cnt > self.total_steps:
             self.stop()
 
-        return a, env_reset
+        return a  #, env_reset
 
     def stop(self):
         """
