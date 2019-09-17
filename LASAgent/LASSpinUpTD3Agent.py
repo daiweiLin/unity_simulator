@@ -53,7 +53,7 @@ class LASSpinUpTD3Agent:
 
         """
 
-        is_new_observation, filtered_observation, _ = self.internal_env.feed_observation(observation)
+        is_new_observation, filtered_observation, reward = self.internal_env.feed_observation(observation)  # is_new_observation, filtered_observation, _ = self.internal_env.feed_observation(observation)
         if is_new_observation:
             action= self.td3_agent.interact(filtered_observation, reward, d=done)  # action, reset = self.td3_agent.interact(filtered_observation, reward, d=done)
             take_action_flag = 1
@@ -152,7 +152,8 @@ class SpinUpTD3Agent:
         self.gamma = args['gamma']
 
         self.ac_kwargs = args['ac_kwargs']
-        self.logger = EpochLogger(**args['logger_kwargs'])
+        logger_kwargs = setup_logger_kwargs(exp_name=args['exp_name'], seed=args['seed'], data_dir=save_dir)
+        self.logger = EpochLogger(**logger_kwargs)
         # Disabled because this will cause trouble when interacting with Unity.
         # For its function, see https://spinningup.openai.com/en/latest/utils/logger.html#spinup.utils.logx.Logger.save_config
         # self.logger.save_config(locals())
@@ -278,7 +279,7 @@ class SpinUpTD3Agent:
         dict_args['pi_lr'] = 1e-3
         dict_args['q_lr'] = 1e-3
         dict_args['batch_size'] = 100
-        dict_args['start_steps'] = 10000
+        dict_args['start_steps'] = 250
         dict_args['act_noise'] = 0.1
         dict_args['target_noise'] = 0.2
         dict_args['noise_clip'] = 0.5
@@ -288,7 +289,6 @@ class SpinUpTD3Agent:
         dict_args['gamma'] = 0.99
 
         dict_args['ac_kwargs'] = dict(hidden_sizes=[dict_args['hid']] * dict_args['l'])
-        dict_args['logger_kwargs'] = setup_logger_kwargs(dict_args['exp_name'], dict_args['seed'])
         return dict_args
 
     def get_action(self, o, noise_scale):
@@ -382,14 +382,14 @@ class SpinUpTD3Agent:
             #     self.logger.save_state({'env': self.env}, None)
 
             # Test the performance of the deterministic version of the agent.
-            self.test_agent()
+            # self.test_agent()
 
             # Log info about epoch
             self.logger.log_tabular('Epoch', epoch)
             self.logger.log_tabular('EpRet', with_min_and_max=True)
-            self.logger.log_tabular('TestEpRet', with_min_and_max=True)
+            # self.logger.log_tabular('TestEpRet', with_min_and_max=True)
             self.logger.log_tabular('EpLen', average_only=True)
-            self.logger.log_tabular('TestEpLen', average_only=True)
+            # self.logger.log_tabular('TestEpLen', average_only=True)
             self.logger.log_tabular('TotalEnvInteracts', self.step_cnt)
             self.logger.log_tabular('Q1Vals', with_min_and_max=True)
             self.logger.log_tabular('Q2Vals', with_min_and_max=True)

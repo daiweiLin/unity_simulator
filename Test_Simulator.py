@@ -18,6 +18,7 @@ from LASAgent.LASBaselineAgent import *
 from Visitor_behaviour import *
 from LASAgent.LASRandomAgent import *
 from LASAgent.LASSpinUpPPOAgent import *
+from LASAgent.LASSpinUpTD3Agent import *
 
 
 def LAS_behavior(p, action_dimension):
@@ -84,6 +85,9 @@ def init(mode, algorithm, num_visitors, unity_dir, save_dir, no_graphics=False, 
         elif algorithm == 'ppo':
             agent = LASSpinUpPPOAgent('SpinUP_PPO_Agent', observation_dim=24, action_dim=11, num_observation=25,
                                   env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
+        elif algorithm == 'td3':
+            agent = LASSpinUpTD3Agent('SpinUP_TD3_Agent', observation_dim=24, action_dim=11, num_observation=25,
+                                  env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
         return env, visitor_bh, agent, behaviour
 
     elif mode == 'SARA':
@@ -94,6 +98,9 @@ def init(mode, algorithm, num_visitors, unity_dir, save_dir, no_graphics=False, 
         elif algorithm == 'ppo':
             agent = LASSpinUpPPOAgent('SpinUP_PPO_Agent', observation_dim=24, action_dim=168, num_observation=25,
                                   env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
+        elif algorithm == 'td3':
+            agent = LASSpinUpTD3Agent('SpinUP_TD3_Agent', observation_dim=24, action_dim=168, num_observation=25,
+                                      env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
         return env, visitor_bh, agent, None
     elif mode == 'Random':
         # initialize random action agent
@@ -130,7 +137,7 @@ def run(mode, algorithm, behaviour, agent, visitors_behaviour):
         elif algorithm == 'ppo':
             total_steps = agent.ppo_agent.local_steps_per_epoch * agent.ppo_agent.epochs
         else:
-            total_steps = agent.spinup_agent.total_steps
+            total_steps = agent.td3_agent.total_steps
         s = 0
         while s <= total_steps - 1:
 
@@ -168,9 +175,12 @@ def run(mode, algorithm, behaviour, agent, visitors_behaviour):
             total_steps = agent.baseline_agent.nb_epochs * agent.baseline_agent.nb_epoch_cycles * \
                           agent.baseline_agent.nb_rollout_steps
             LAS_action = agent.baseline_agent.action_space.sample().tolist() + [take_action_flag]
-        else:
+        elif algorithm == 'ppo':
             total_steps = agent.ppo_agent.local_steps_per_epoch * agent.ppo_agent.epochs
             LAS_action = agent.ppo_agent.action_space.sample().tolist() + [take_action_flag]
+        elif algorithm == 'td3':
+            total_steps = agent.td3_agent.total_steps
+            LAS_action = agent.td3_agent.action_space.sample().tolist() + [take_action_flag]
         s = 0
         while s <= total_steps - 1:
 
@@ -226,8 +236,8 @@ def run(mode, algorithm, behaviour, agent, visitors_behaviour):
 if __name__ == '__main__':
 
     train_mode = True  # Whether to run the environment in training or inference mode
-    learning_mode = 'PLA'  # 'SARA', 'PLA', 'Random'
-    alg = 'ddpg'  # 'ddpg','ppo', 'td3'
+    learning_mode = 'SARA'  # 'SARA', 'PLA', 'Random'
+    alg = 'td3'  # 'ddpg','ppo', 'td3'
     n_visitors = 1
 
     is_sharcnet = False
