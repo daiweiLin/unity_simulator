@@ -49,7 +49,8 @@ def init(mode, num_visitors, unity_dir, save_dir, no_graphics=False, interact_wi
             print("Worker ID {} is in use.".format(worker_id))
             worker_id += 1
         except Exception as e:
-            print("Other exceptions:{}".format(e))
+            print("Cannot Initialize Unity Environment.\nOther exceptions:{}".format(e))
+            break
         else:
             print("UnityEnvironment initialized with worker_id={}".format(worker_id))
             break
