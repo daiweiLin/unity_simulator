@@ -13,10 +13,10 @@ Adapted from spinup/algos/ppo/ppo.py
 import time
 import datetime
 import os
+import csv
 
 from gym import spaces
 import tensorflow as tf
-from mpi4py import MPI
 import numpy as np
 
 from spinup.algos.ppo.ppo import PPOBuffer
@@ -164,8 +164,20 @@ class SpinUpPPOAgent:
         # For its function, see https://spinningup.openai.com/en/latest/utils/logger.html#spinup.utils.logx.Logger.save_config
         # self.logger.save_config(locals())
 
+        # ======================== #
+        #    Log saving            #
+        # ======================== #
+        if save_dir is not None:
+            self.log_dir = os.path.join(save_dir, 'log')
+        else:
+            self.log_dir = os.path.join(os.path.abspath('.'), 'save', 'log')
 
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
 
+        # ================================= #
+        # Initialization from original file #
+        # ================================= #
         self.env = env
         if env_type == "Unity":
             obs_max = np.array([1.] * observation_dim)
@@ -284,12 +296,15 @@ class SpinUpPPOAgent:
         env_reset = False
 
 
-
         a, v_t, logp_t = self.sess.run(self.get_action_ops, feed_dict={self.x_ph: o.reshape(1, -1)})
 
         # save and log
         self.buf.store(o, a, r, v_t, logp_t)
         self.logger.store(VVals=v_t)
+
+        # Save to local CSV file
+        self._save_log(self.log_dir,
+                       [datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), o, a, r]) # note here r is off by 1. It is the reward of previous step, not this step.
 
         # o, r, d, _ = self.env.step(a[0])
         self.ep_ret += r
@@ -361,6 +376,17 @@ class SpinUpPPOAgent:
                      KL=kl, Entropy=ent, ClipFrac=cf,
                      DeltaLossPi=(pi_l_new - pi_l_old),
                      DeltaLossV=(v_l_new - v_l_old))
+
+    def _save_log(self, save_dir, data):
+        """
+        Save action, observation and rewards in a local file
+        :param save_dir:
+        """
+        date = datetime.datetime.today().strftime('%Y-%m-%d')
+        file_dir = os.path.join(save_dir, date + ".csv")
+        with open(file_dir, 'a') as csvFile:
+            writer = csv.writer(csvFile)
+            writer.writerow(data)
 
     def stop(self):
         """

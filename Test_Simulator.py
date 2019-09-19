@@ -52,7 +52,8 @@ def init(mode, algorithm, num_visitors, unity_dir, save_dir, no_graphics=False, 
             print("Worker ID {} is in use.".format(worker_id))
             worker_id += 1
         except Exception as e:
-            print("Other exceptions:{}".format(e))
+            print("Cannot Initialize Unity Environment. Other exceptions:{}".format(e))
+            break
         else:
             print("UnityEnvironment initialized with worker_id={}".format(worker_id))
             break
@@ -237,7 +238,7 @@ if __name__ == '__main__':
 
     train_mode = True  # Whether to run the environment in training or inference mode
     learning_mode = 'SARA'  # 'SARA', 'PLA', 'Random'
-    alg = 'td3'  # 'ddpg','ppo', 'td3'
+    alg = 'ppo'  # 'ddpg','ppo', 'td3'
     n_visitors = 1
 
     is_sharcnet = False

@@ -9,6 +9,10 @@ Adapted from spinup/algos/td3/td3.py
 2. Use Buffer from original td3.py file
 """
 
+import datetime
+import os
+import csv
+#================== Original Imports ========================#
 import numpy as np
 import tensorflow as tf
 import gym
@@ -19,7 +23,7 @@ from spinup.algos.td3.core import get_vars
 from spinup.utils.logx import EpochLogger
 from spinup.algos.td3.td3 import ReplayBuffer
 from spinup.utils.run_utils import setup_logger_kwargs
-
+#============================================================#
 from LASAgent.InternalEnvironment import InternalEnvironment
 
 
@@ -158,7 +162,20 @@ class SpinUpTD3Agent:
         # For its function, see https://spinningup.openai.com/en/latest/utils/logger.html#spinup.utils.logx.Logger.save_config
         # self.logger.save_config(locals())
 
+        # ======================== #
+        #    Log saving            #
+        # ======================== #
+        if save_dir is not None:
+            self.log_dir = os.path.join(save_dir, 'log')
+        else:
+            self.log_dir = os.path.join(os.path.abspath('.'), 'save', 'log')
 
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
+
+        # ================================= #
+        # Initialization from original file #
+        # ================================= #
         self.env, self.test_env = env, env
         self.env_type = env_type
         if env_type == "Unity":
@@ -248,9 +265,9 @@ class SpinUpTD3Agent:
         # o, r, d, ep_ret, ep_len = env.reset(), 0, False, 0, 0
         self.total_steps = self.steps_per_epoch * self.epochs
 
-        ###############################################################
+        # =========================================================== #
         # Initialize Counters and returns for main loop in interact() #
-        ###############################################################
+        # =========================================================== #
         self.step_cnt = 0
         self.ep_len = 0
         self.ep_ret = 0
@@ -267,7 +284,7 @@ class SpinUpTD3Agent:
 
         dict_args = dict()
         dict_args['hid'] = 300  # default 300 size of each hidden layer
-        dict_args['l'] = 1  # number of layers
+        dict_args['l'] = 2  # number of layers
         dict_args['seed'] = 0  # Discard as this will cause identical results for PLA
         dict_args['exp_name'] = 'td3'
         dict_args['save_freq'] = 1
@@ -339,6 +356,9 @@ class SpinUpTD3Agent:
 
         # Store experience to replay buffer
         self.replay_buffer.store(self.o, self.a, r, o, d)
+        # Save to local CSV file
+        self._save_log(self.log_dir,
+                       [datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), self.o, self.a, r])
 
         # Super critical, easy to overlook step: make sure to update
         # most recent observation!
@@ -402,6 +422,17 @@ class SpinUpTD3Agent:
             self.stop()
 
         return a  #, env_reset
+
+    def _save_log(self, save_dir, data):
+        """
+        Save action, observation and rewards in a local file
+        :param save_dir:
+        """
+        date = datetime.datetime.today().strftime('%Y-%m-%d')
+        file_dir = os.path.join(save_dir, date + ".csv")
+        with open(file_dir, 'a') as csvFile:
+            writer = csv.writer(csvFile)
+            writer.writerow(data)
 
     def stop(self):
         """
