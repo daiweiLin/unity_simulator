@@ -103,7 +103,7 @@ class BaselineAgent:
         else:
             self.env = env
             self.env_type = env_type
-            if env_type == 'VREP':
+            if env_type == 'Gym':
                 self.action_space = env.action_space
                 self.observation_space = env.observation_space
 
@@ -150,8 +150,8 @@ class BaselineAgent:
 
         self.memory = Memory(limit=int(1e6), action_shape=self.action_space.shape,
                         observation_shape=self.observation_space.shape)
-        critic = Critic(layer_norm=layer_norm)#, share=share)
-        actor = Actor(nb_actions, layer_norm=layer_norm) #, share=share)
+        critic = Critic(layer_size=args['layer_size'], layer_norm=layer_norm)#, share=share)
+        actor = Actor(nb_actions, layer_size=args['layer_size'], layer_norm=layer_norm) #, share=share)
 
         tf.reset_default_graph()
 
@@ -184,19 +184,20 @@ class BaselineAgent:
         reward_scale = args['reward_scale']
 
         # create learning agent
+
+        observation_range = (self.observation_space.low[0], self.observation_space.high[0])
+        action_range = (self.action_space.low[0], self.action_space.high[0])
         self.agent = DDPG(actor, critic, self.memory, self.observation_space.shape, self.action_space.shape,
                      gamma=gamma, tau=tau, normalize_returns=normalize_returns,
-                     normalize_observations=normalize_observations,
+                     normalize_observations=normalize_observations, observation_range=observation_range,
+                     action_range=action_range,
                      batch_size=self.batch_size, action_noise=action_noise, param_noise=param_noise,
                      critic_l2_reg=critic_l2_reg,
                      actor_lr=actor_lr, critic_lr=critic_lr, enable_popart=popart, clip_norm=clip_norm,
                      reward_scale=reward_scale)
-        # logger.info('Using agent with the following configuration:')
-        # logger.info(str(self.agent.__dict__.items()))
 
         # Reward histories
 
-        # eval_episode_rewards_history = deque(maxlen=100)
         self.episode_rewards_history = deque(maxlen=100)
         self.avg_episode_rewards_history = []
 
@@ -338,7 +339,7 @@ class BaselineAgent:
                 self.epoch_episodes += 1
                 self.episodes += 1
 
-                self.agent.reset() # <<<<???? not sure
+                # self.agent.reset() # <<<<???? not sure
                 # For simulation on unity, no reset needed. Because the simulation is to simulate ROM experiment.
                 # if self.env is not None:
                 #     obs = self.env.reset()
@@ -429,7 +430,7 @@ class BaselineAgent:
         """
         with self.sess.as_default():
             # saver = tf.train.Saver()
-            file_dir = os.path.join(model_dir,'param_action.ckpt')
+            file_dir = os.path.join(model_dir, 'param_action.ckpt')
             self.saver.restore(self.sess, file_dir)
             print("Model loaded from {}", format(file_dir))
 
@@ -499,6 +500,7 @@ class BaselineAgent:
 
         dict_args = dict()
         dict_args['render_eval'] = False
+        dict_args['layer_size'] = 300
         dict_args['layer_norm'] = True
         dict_args['render'] = False
         dict_args['normalize_returns'] = False
