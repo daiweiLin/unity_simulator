@@ -1,5 +1,5 @@
 # Sharcnet Installation Instructions
-This is the instructions on how to install Unity ML Toolkits on Sharcnet.
+The following is the instructions on how to install Unity ML Toolkits on Sharcnet.
 
 ## 1. Create virtual environment and install Tensorflow 1.7
 [Reference of sharknet](https://docs.computecanada.ca/wiki/TensorFlow)
@@ -71,3 +71,22 @@ pip install numpy --upgrade
 
 ## 4. Install Baselines
 See [here](https://github.com/UWaterloo-ASL/ML_lite/blob/master/README.md) for installation detail
+## 5. Install SpinningUp
+
+```
+git clone https://github.com/openai/spinningup.git
+cd spinningup
+pip install -e .
+```
+See [SpinningUp](https://spinningup.openai.com/en/latest/user/installation.html) for more details
+
+# Download logs from SHARCNET
+Open a local session on MobaXterm, and open the home directory:
+```linux
+open /home/mobaxterm
+```
+Put download_log*.sh files in the directory. Then run the scripts like following
+```
+bash dowload_log.sh
+```
+This will download the files into MobaXterm's home directory under **downloads** folder, for example C:\Users\YourName\Documents\MobaXterm\home\downloads
