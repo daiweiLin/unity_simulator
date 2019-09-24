@@ -239,7 +239,7 @@ if __name__ == '__main__':
     train_mode = True  # Whether to run the environment in training or inference mode
     learning_mode = 'SARA'  # 'SARA', 'PLA', 'Random'
     alg = 'ppo'  # 'ddpg','ppo', 'td3'
-    n_visitors = 1
+    n_visitors = 5
 
     is_sharcnet = False
     job_id = ""
@@ -258,9 +258,12 @@ if __name__ == '__main__':
         else:
             unity_dir = 'unity_executable/single_visitor/LAS_Simulator'
     else:
-        interact_with_app = True
+        interact_with_app = False
         no_graphics = False
-        unity_dir = 'LAS-Scenes/Unity/LAS_Simulator'
+        if n_visitors > 1:
+            unity_dir = 'LAS-Scenes/Unity_MultiVisitor/LAS_Simulator'
+        else:
+            unity_dir = 'LAS-Scenes/Unity/LAS_Simulator'
 
     date = datetime.datetime.today().strftime('%Y-%m-%d-%H%M%S')
     save_dir = os.path.join(os.path.abspath('.'), 'save', learning_mode, date+"-"+job_id)
