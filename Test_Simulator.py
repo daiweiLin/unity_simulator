@@ -62,7 +62,7 @@ def init(mode, algorithm, num_visitors, unity_dir, save_dir, no_graphics=False, 
     ############
     # Visitors #
     ############
-    visitor_bh = Visitor_behaviour(num_visitors, 2)
+    visitor_bh = Visitor_behaviour(num_visitors)
 
     ##################
     # Learning Agent #
