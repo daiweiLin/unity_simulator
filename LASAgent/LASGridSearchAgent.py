@@ -367,12 +367,12 @@ class GridSearchAgent:
         dict_args['nb_epoch_cycles'] = 1
         dict_args['nb_train_steps'] = 5
         dict_args['nb_eval_steps'] = 100
-        dict_args['nb_rollout_steps'] = 10
+        dict_args['nb_rollout_steps'] = 25
 
         dict_args['num_sample_per_para'] = 3
-        dict_args['para_range'] = [[0, 1]] * 6
+        dict_args['para_range'] = [[-1, 1]] * 6
         dict_args['search_para'] = ['led_ru', 'led_ho', 'led_rd', 'I_max', 'ml_gap', 'n_gap']
-        dict_args['epochs_per_comb'] = 2  # Number of epochs to run for one combination of test parameters
+        dict_args['epochs_per_comb'] = 10  # Number of epochs to run for one combination of test parameters
 
         return dict_args
 
