@@ -183,6 +183,33 @@ class Node:
         # ---------
         return self.led_val, self.sma_val  # self.moth_val
 
+    def reset(self):
+        self.sma_act = False
+        self.led_act = False
+        self.moth_act = False
+
+        self.sma_start_t = self.curr_t
+        self.led_start_t = self.curr_t
+        self.moth_start_t = self.curr_t
+
+        self.sma_val = [0.0] * self.sma_num
+        self.led_val = [0.0] * self.led_num
+        self.moth_val = [0.0] * self.moth_num
+
+        self.para_length = 10
+        self.para_buffer = [None] * 10
+
+        self.led_ru = 1
+        self.led_ho = 2
+        self.led_rd = 1
+        self.moth_ru = 1
+        self.moth_ho = 2
+        self.moth_rd = 1
+        self.I_max = 1
+
+        self.ml_gap = 1
+        self.sma_gap = 0.2
+
 class Sculpture:
     def __init__(self, node_num, sma_num, led_num, moth_num):
 
@@ -262,8 +289,9 @@ class Behaviour:
 
         self.sys_time_scale = 10 / system_freq # reality/simulation
         # map actions from [-1, 1] to the range defined in paper Table.1
-        self.para_mapping_scale = np.array([2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 1.0, 2.5, 2.5, 2.5, 2.0])
-        self.para_mapping_offset = np.array([2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 1.0, 2.5, 2.5, 2.5, 3])
+        # led_ru, led_rd, moth_ru, moth_rd offset is incremented by 0.00001 to avoid numerical error in Node.nodestep()
+        self.para_mapping_scale = np.array([2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 0.5, 2.5, 2.5, 2.5, 2.0])
+        self.para_mapping_offset = np.array([2.50001, 2.5, 2.50001, 2.50001, 2.5, 2.50001, 0.5, 2.5, 2.5, 2.5, 3])
         # then shrink the time-related parameters by self.time_scale.
         self.para_mapping_time = np.ones((11,))*self.sys_time_scale
         self.para_mapping_time[6] = 1
@@ -373,6 +401,17 @@ class Behaviour:
                 i += 1
             self.propagation_list.append(p_chain)
             # print("Propagation list {}".format(self.propagation_list))
+
+    def reset(self):
+        self.state = 'idle'
+        self.state_timer = 0.0
+        self.idle_timer = 0.0
+        self.propagate_timer = 0.0
+
+        self.propagation_list = list()
+
+        for node in self.sculpture.node_list:
+            node.reset()
 
 
 if __name__ == '__main__':
