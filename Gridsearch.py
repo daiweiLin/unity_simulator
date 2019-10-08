@@ -39,7 +39,7 @@ def init(mode, algorithm, num_visitors, unity_dir, save_dir, no_graphics=False, 
     env_name = unity_dir if interact_with_app else None
 
     # Initialized unity environment. Each environment requires an unique worker_id.
-    worker_id = 10
+    worker_id = 0
     while worker_id < 20:
         try:
             env = UnityEnvironment(file_name=env_name, seed=1, no_graphics=no_graphics, worker_id=worker_id)
@@ -168,7 +168,7 @@ if __name__ == '__main__':
         else:
             unity_dir = 'unity_executable/single_visitor/LAS_Simulator'
     else:
-        interact_with_app = True
+        interact_with_app = False
         no_graphics = False
         if n_visitors > 1:
             unity_dir = 'LAS-Scenes/Unity_MultiVisitor/LAS_Simulator'

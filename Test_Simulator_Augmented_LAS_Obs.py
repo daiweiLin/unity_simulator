@@ -149,7 +149,7 @@ def run(mode, algorithm, behaviour, agent, visitors_behaviour):
                 s += 1
                 # print('s={}'.format(s))
 
-            LAS_action = behaviour.step(observation, simulator_time)
+            LAS_action = behaviour.step(observation[:24], simulator_time)
             LAS_action = LAS_action + [take_action_flag]
             # print("LAS Action:{}".format(LAS_action))
 
@@ -237,7 +237,7 @@ def run(mode, algorithm, behaviour, agent, visitors_behaviour):
 if __name__ == '__main__':
 
     train_mode = True  # Whether to run the environment in training or inference mode
-    learning_mode = 'Random'  # 'SARA', 'PLA', 'Random'
+    learning_mode = 'PLA'  # 'SARA', 'PLA', 'Random'
     alg = 'ddpg'  # 'ddpg','ppo', 'td3'
     n_visitors = 5
 

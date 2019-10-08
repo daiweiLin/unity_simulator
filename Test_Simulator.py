@@ -237,9 +237,9 @@ def run(mode, algorithm, behaviour, agent, visitors_behaviour):
 if __name__ == '__main__':
 
     train_mode = True  # Whether to run the environment in training or inference mode
-    learning_mode = 'PLA'  # 'SARA', 'PLA', 'Random'
+    learning_mode = 'Random'  # 'SARA', 'PLA', 'Random'
     alg = 'ddpg'  # 'ddpg','ppo', 'td3'
-    n_visitors = 1
+    n_visitors = 5
 
     is_sharcnet = False
     job_id = ""
@@ -258,7 +258,7 @@ if __name__ == '__main__':
         else:
             unity_dir = 'unity_executable/single_visitor/LAS_Simulator'
     else:
-        interact_with_app = True
+        interact_with_app = False
         no_graphics = False
         if n_visitors > 1:
             unity_dir = 'LAS-Scenes/Unity_MultiVisitor/LAS_Simulator'
