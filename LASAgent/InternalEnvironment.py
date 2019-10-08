@@ -9,6 +9,12 @@ class InternalEnvironment:
         self.observation_cnt = 0
         self.observation_group = np.zeros((num_observation, observation_dim))
 
+        # for the case of augmented observation
+        if observation_dim > 24:
+            self.reward_observation = 24
+        else:
+            self.reward_observation = observation_dim
+
     def feed_observation(self, observation):
         """
         1. Feed observation into internal environment
@@ -18,7 +24,7 @@ class InternalEnvironment:
         :return:
         """
 
-        flt_observation = np.zeros((1,self.observation_dim), dtype=np.float32)
+        flt_observation = np.zeros((1, self.observation_dim), dtype=np.float32)
         reward = 0
         # stack observations
         self.observation_group[self.observation_cnt] = observation
@@ -50,7 +56,7 @@ class InternalEnvironment:
         :return: reward
         """
         reward = 0
-        for i in range(flt_observation.shape[0]):
+        for i in range(self.reward_observation):
             reward += flt_observation[i]
         return reward
 
