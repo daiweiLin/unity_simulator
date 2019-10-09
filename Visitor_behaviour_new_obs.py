@@ -17,9 +17,9 @@ class Visitor_behaviour:
 
     def setup(self, coordinates):
         self.node_number = int(len(coordinates) / 2)
-        self.dist_matrix = self._cal_distance(coordinates)
+        self.dist_matrix = self._cal_node_distance(coordinates)
 
-    def _cal_distance(self, coordinates):
+    def _cal_node_distance(self, coordinates):
         num_nodes = int(len(coordinates)/2)
         dis_matrix = np.zeros((num_nodes, num_nodes), dtype=np.float64)
 

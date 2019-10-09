@@ -258,7 +258,7 @@ if __name__ == '__main__':
         else:
             unity_dir = 'unity_executable/single_visitor/LAS_Simulator'
     else:
-        interact_with_app = False
+        interact_with_app = True
         no_graphics = False
         if n_visitors > 1:
             unity_dir = 'LAS-Scenes/Unity_MultiVisitor/LAS_Simulator'
