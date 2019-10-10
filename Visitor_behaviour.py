@@ -7,6 +7,7 @@ class Visitor_behaviour:
         self.num_visitors = num_visitors
         # self.visitor_stay_time = stay_time # seconds
         self.node_number = None
+        self.node_coords = None
         self.dist_matrix = None
 
         # self.visitor_start_ts = np.zeros(self.num_visitors, dtype=np.float64)
@@ -15,6 +16,7 @@ class Visitor_behaviour:
 
     def setup(self, coordinates):
         self.node_number = int(len(coordinates) / 2)
+        self.node_coords = coordinates
         self.dist_matrix = self._cal_node_distance(coordinates)
 
     @staticmethod
@@ -53,7 +55,7 @@ class Visitor_behaviour:
             distance[idx] = np.linalg.norm(np.array(v_coordinates) - np.array(n_coordinates[idx*2:idx*2+2]))
         return distance
 
-    def _find_hot_spot(self, observation, timeout=False, prev_dest=None):
+    def _find_hot_spot(self, observation, v_position, timeout=False, prev_dest=None):
         """
         Find the spot with most activities in the area
         The score is calculated using the sum of inverse of distances times observation values.
@@ -65,6 +67,7 @@ class Visitor_behaviour:
             distance = self.dist_matrix[i, :]
             #distance[i] = 1 # change this to avoid numerical error (moved into _cal_node_distance())
             heat[i] = np.sum(observation * np.reciprocal(distance))
+        distances = self._cal_node_visitor_distance(v_position, self.node_coords)
 
         # print("heat={}".format(heat))
         # At least one hot spot
