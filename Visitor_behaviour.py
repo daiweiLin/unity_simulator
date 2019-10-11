@@ -7,7 +7,6 @@ class Visitor_behaviour:
         self.num_visitors = num_visitors
         # self.visitor_stay_time = stay_time # seconds
         self.node_number = None
-        self.node_coords = None
         self.dist_matrix = None
 
         # self.visitor_start_ts = np.zeros(self.num_visitors, dtype=np.float64)
@@ -16,11 +15,10 @@ class Visitor_behaviour:
 
     def setup(self, coordinates):
         self.node_number = int(len(coordinates) / 2)
-        self.node_coords = coordinates
-        self.dist_matrix = self._cal_node_distance(coordinates)
+        self.dist_matrix = self._cal_node_distance(coordinates, normalize=True)
 
     @staticmethod
-    def _cal_node_distance(coordinates):
+    def _cal_node_distance(coordinates, normalize=True):
         num_nodes = int(len(coordinates)/2)
         dis_matrix = np.zeros((num_nodes, num_nodes), dtype=np.float64)
 
@@ -31,16 +29,18 @@ class Visitor_behaviour:
                 dis_matrix[i, j] = np.linalg.norm(end_point-start_point)
                 dis_matrix[j, i] = dis_matrix[i, j] # because of symmetry
 
-        # normalize distance so that the minimal distance is 1.
-        # This is to ensure center nodes are more important than surrounding nodes
-        dis_sort = np.sort(dis_matrix.flatten())
-        min_dis = 0.0
-        for d in dis_sort:
-            if d != 0:
-                min_dis = d
-                break
-        assert min_dis != 0.0, "Minimum distance between nodes is 0.0. Double check distance matrix."
-        dis_matrix = dis_matrix / min_dis
+        if normalize:
+            # normalize distance so that the minimal distance is 1.
+            # This is to ensure center nodes are more important than surrounding nodes
+            dis_sort = np.sort(dis_matrix.flatten())
+            min_dis = 0.0
+            for d in dis_sort:
+                if d != 0:
+                    min_dis = d
+                    break
+            assert min_dis != 0.0, "Minimum distance between nodes is 0.0. Double check distance matrix."
+            if min_dis < 1:
+                dis_matrix = dis_matrix / min_dis
 
         # Make diagonal element equal to 1. This is to avoid numerical error in _find_hot_spot()
         for i in range(num_nodes):
@@ -52,13 +52,18 @@ class Visitor_behaviour:
     def _cal_node_visitor_distance(v_coordinates, n_coordinates):
         distance = np.zeros((int(len(n_coordinates)/2),))
         for idx in range(len(distance)):
-            distance[idx] = np.linalg.norm(np.array(v_coordinates) - np.array(n_coordinates[idx*2:idx*2+2]))
+            d = np.linalg.norm(np.array(v_coordinates) - np.array(n_coordinates[idx*2:idx*2+2]))
+            # Avoid numerical error
+            if d == 0.0:
+                d = 1e-6
+            distance[idx] = d
         return distance
 
-    def _find_hot_spot(self, observation, v_position, timeout=False, prev_dest=None):
+    def _find_hot_spot(self, observation, v_coordinates, n_coordinates, timeout=False, prev_dest=None):
         """
         Find the spot with most activities in the area
-        The score is calculated using the sum of inverse of distances times observation values.
+        The score is calculated using the sum of inverse of distances times observation values. Then it is divided by
+        the distance between visitor and nodes.
         :return: index of selected spot if exists, return None o.w.
         """
         observation = np.array(observation)
@@ -67,9 +72,19 @@ class Visitor_behaviour:
             distance = self.dist_matrix[i, :]
             #distance[i] = 1 # change this to avoid numerical error (moved into _cal_node_distance())
             heat[i] = np.sum(observation * np.reciprocal(distance))
-        distances = self._cal_node_visitor_distance(v_position, self.node_coords)
+        '''
+        Only consider those nodes with LED turned ON.
+        Prevent visitors from going to a OFF node with many turned ON nodes around it.
+        Then divide Heat by the distance between visitor and each node to select the nearest interesting spot.
+        '''
+        heat = heat * (observation > 0)
+        #print("filtered heat=\n{}".format(heat))
+        v_n_distance = self._cal_node_visitor_distance(v_coordinates, n_coordinates)
+        heat = heat / v_n_distance
 
-        # print("heat={}".format(heat))
+        #==============================#
+        # Select spot w/ highest score #
+        #==============================#
         # At least one hot spot
         if np.sum(heat > 0) > 0:
             if not timeout:
@@ -89,14 +104,14 @@ class Visitor_behaviour:
         NOTICE: is_timeout_x ONLY exist in multi-visitor case
         :param observation: [LED1, LED2, ... LEDn,
                             x1, y1, x2, y2, ... xn, yn,
-                            is_arrived_1, (is_timeout_1), is_arrived_2, (is_timeout_2),... is_arrived_m,(is_timeout_m),
+                            is_arrived_1, is_timeout_1, is_arrived_2, is_timeout_2,... is_arrived_m,is_timeout_m,
                             v_x1, v_y1, ...v_xm, v_ym
                             ingame_time]
                             ============================================================================================
                             LEDn                      : LED intensity
                             xn, yn                    : LED's (x,y) coordinates,
                             is_arrived_m, is_timeout_m: whether visitor arrives at destination and whether visitor time
-                                                        out. Timeout only exists in multi-visitor case.
+                                                        out.
                             v_xm, v_ym                : visitor current coordinates
                             ============================================================================================
                             3*n + 4*m + 1 elements in total.
@@ -107,21 +122,23 @@ class Visitor_behaviour:
         """
         visitor_actions = list()
         obs = observation[0 : self.node_number]
-        positions = observation[self.node_number:self.node_number*3]
-        if self.num_visitors > 1:
-            is_arrv = observation[self.node_number*3:self.node_number*3 + self.num_visitors*2][::2]
-            is_timeout = observation[self.node_number*3:self.node_number*3 + self.num_visitors*2][1::2]
-            # if np.sum(is_timeout) > 0:
-            #     print("Timeout:{}".format(is_timeout))
-        else:
-            is_arrv = observation[self.node_number*3:self.node_number*3 + self.num_visitors]
-            is_timeout = [False]
+        node_positions = observation[self.node_number:self.node_number*3]
+        # if self.num_visitors > 1:
+        is_arrv = observation[self.node_number*3:self.node_number*3 + self.num_visitors*2][::2]
+        is_timeout = observation[self.node_number*3:self.node_number*3 + self.num_visitors*2][1::2]
+        # if np.sum(is_timeout) > 0:
+        #     print("Timeout:{}".format(is_timeout))
+        # else:
+        #     is_arrv = observation[self.node_number*3:self.node_number*3 + self.num_visitors]
+        #     is_timeout = observation[self.node_number*3:self.node_number*3 + self.num_visitors + 1]
+        visitor_coords = observation[self.node_number*3 + self.num_visitors*2:self.node_number*3 + self.num_visitors*4]
 
         for v in range(self.num_visitors):
             dest = None
             if is_timeout[v] == 1:
                 # The visitor has spent too much time trying to get to destination
-                dest = self._find_hot_spot(observation=obs, timeout=True, prev_dest=self.visitor_prev_dest[v])
+                dest = self._find_hot_spot(observation=obs, v_coordinates=visitor_coords[v*2:v*2+2], n_coordinates=node_positions,
+                                           timeout=True, prev_dest=self.visitor_prev_dest[v])
                 self.visitor_prev_dest[v] = dest
 
             elif is_arrv[v]:
@@ -129,12 +146,14 @@ class Visitor_behaviour:
 
                 if prev_dest is None:
                     # Visitor just arrived at a random position, so he/she moves to next location
-                    dest = self._find_hot_spot(observation=obs)
+                    dest = self._find_hot_spot(observation=obs, v_coordinates=visitor_coords[v*2:v*2+2],
+                                               n_coordinates=node_positions)
                     self.visitor_prev_dest[v] = dest
                 else:
                     # Visitor just arrived at a node, so he/she wants to stay as long as the light is ON
                     if obs[prev_dest] <= 0:
-                        dest = self._find_hot_spot(observation=obs)
+                        dest = self._find_hot_spot(observation=obs, v_coordinates=visitor_coords[v*2:v*2+2],
+                                                   n_coordinates=node_positions)
                         self.visitor_prev_dest[v] = dest
                     else:
                         dest = self.visitor_prev_dest[v]
@@ -148,8 +167,8 @@ class Visitor_behaviour:
                 # Found a destination
 
                 # print("Destination = Node{}".format(dest))
-                visitor_actions.append(positions[2 * dest])
-                visitor_actions.append(positions[2 * dest + 1])
+                visitor_actions.append(node_positions[2 * dest])
+                visitor_actions.append(node_positions[2 * dest + 1])
             else:
                 # Random select a position in space
                 random_dest = np.random.uniform(low=-1, high=1, size=2) * np.array([10.0, 6.5])
@@ -163,6 +182,14 @@ class Visitor_behaviour:
 if __name__ == "__main__":
     # This section is for testing Visitor_behaviour Class
 
-    visitor_bh = Visitor_behaviour(num_visitors=1, coordinates=[0,0, 0,1.5, 1.5,0, 1.5,1.5])
+    visitor_bh = Visitor_behaviour(num_visitors=1)
+    visitor_bh.setup(coordinates=[0, 0, 0, 1.5, 1.5, 0, 1.5, 1.5])
+    print("\ndistance matrix:")
     print(visitor_bh.dist_matrix)
-    print(visitor_bh._find_hot_spot([0, 0.5, 0.1, 0.2]))
+
+    print("\nDistance between visitor and lights:")
+    print(visitor_bh._cal_node_visitor_distance(v_coordinates=[0, 0], n_coordinates=[0, 0, 0, 1.5, 1.5, 0, 1.5, 1.5]))
+
+    print("\nHot spot:")
+    print(visitor_bh._find_hot_spot(observation=[0, 0.5, 0.1, 0.2], v_coordinates=[0, 0]))
+
