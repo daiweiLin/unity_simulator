@@ -3,11 +3,13 @@ import numpy as np
 
 class Visitor_behaviour:
 
-    def __init__(self, num_visitors):
+    def __init__(self, num_visitors, epsilon=0):
         self.num_visitors = num_visitors
+        self.epsilon = epsilon
         # self.visitor_stay_time = stay_time # seconds
         self.node_number = None
         self.dist_matrix = None
+
 
         # self.visitor_start_ts = np.zeros(self.num_visitors, dtype=np.float64)
         self.visitor_prev_dest = [None]*self.num_visitors
@@ -123,43 +125,43 @@ class Visitor_behaviour:
         visitor_actions = list()
         obs = observation[0 : self.node_number]
         node_positions = observation[self.node_number:self.node_number*3]
-        # if self.num_visitors > 1:
+
         is_arrv = observation[self.node_number*3:self.node_number*3 + self.num_visitors*2][::2]
         is_timeout = observation[self.node_number*3:self.node_number*3 + self.num_visitors*2][1::2]
         # if np.sum(is_timeout) > 0:
         #     print("Timeout:{}".format(is_timeout))
-        # else:
-        #     is_arrv = observation[self.node_number*3:self.node_number*3 + self.num_visitors]
-        #     is_timeout = observation[self.node_number*3:self.node_number*3 + self.num_visitors + 1]
         visitor_coords = observation[self.node_number*3 + self.num_visitors*2:self.node_number*3 + self.num_visitors*4]
 
         for v in range(self.num_visitors):
             dest = None
             if is_timeout[v] == 1:
-                # The visitor has spent too much time trying to get to destination
+                # Time out: the visitor has spent too much time trying to get to destination
                 dest = self._find_hot_spot(observation=obs, v_coordinates=visitor_coords[v*2:v*2+2], n_coordinates=node_positions,
                                            timeout=True, prev_dest=self.visitor_prev_dest[v])
                 self.visitor_prev_dest[v] = dest
 
             elif is_arrv[v]:
                 prev_dest = self.visitor_prev_dest[v]
-
-                if prev_dest is None:
-                    # Visitor just arrived at a random position, so he/she moves to next location
-                    dest = self._find_hot_spot(observation=obs, v_coordinates=visitor_coords[v*2:v*2+2],
-                                               n_coordinates=node_positions)
-                    self.visitor_prev_dest[v] = dest
+                if np.random.random_sample() < self.epsilon:
+                    dest = None
+                    self.visitor_prev_dest[v] = None
                 else:
-                    # Visitor just arrived at a node, so he/she wants to stay as long as the light is ON
-                    if obs[prev_dest] <= 0:
+                    if prev_dest is None:
+                        # Visitor just arrived at a random position, so he/she moves to next location
                         dest = self._find_hot_spot(observation=obs, v_coordinates=visitor_coords[v*2:v*2+2],
                                                    n_coordinates=node_positions)
                         self.visitor_prev_dest[v] = dest
                     else:
-                        dest = self.visitor_prev_dest[v]
+                        # Visitor just arrived at a node, so he/she wants to stay as long as the light is ON
+                        # When light is turned OFF, the visitor select a new destination
+                        if obs[prev_dest] <= 0:
+                            dest = self._find_hot_spot(observation=obs, v_coordinates=visitor_coords[v*2:v*2+2],
+                                                       n_coordinates=node_positions)
+                            self.visitor_prev_dest[v] = dest
+                        else:
+                            dest = self.visitor_prev_dest[v]
 
             else:
-                # dest = self._find_hot_spot(observation=obs, visitor_at_node=None)
                 dest = self.visitor_prev_dest[v]
 
             # Convert dest(int) into coordinates

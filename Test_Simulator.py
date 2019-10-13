@@ -28,7 +28,7 @@ def LAS_behavior(p, action_dimension):
         return np.zeros(action_dimension)
 
 
-def init(mode, algorithm, num_visitors, unity_dir, save_dir, no_graphics=False, interact_with_app=True):
+def init(mode, algorithm, num_visitors, v_epsilon, unity_dir, save_dir, no_graphics=False, interact_with_app=True):
     """
     :param mode: Random, SARA or PLA
     :param algorithm: 'ddpg', 'ppo' and 'td3'
@@ -62,7 +62,7 @@ def init(mode, algorithm, num_visitors, unity_dir, save_dir, no_graphics=False, 
     ############
     # Visitors #
     ############
-    visitor_bh = Visitor_behaviour(num_visitors)
+    visitor_bh = Visitor_behaviour(num_visitors, epsilon=v_epsilon)
 
     ##################
     # Learning Agent #
@@ -237,9 +237,10 @@ def run(mode, algorithm, behaviour, agent, visitors_behaviour):
 if __name__ == '__main__':
 
     train_mode = True  # Whether to run the environment in training or inference mode
-    learning_mode = 'PLA'  # 'SARA', 'PLA', 'Random'
+    learning_mode = 'Random'  # 'SARA', 'PLA', 'Random'
     alg = 'ddpg'  # 'ddpg','ppo', 'td3'
-    n_visitors = 5
+    n_visitors = 1
+    v_eps = 0.1
 
     is_sharcnet = False
     job_id = ""
@@ -271,7 +272,7 @@ if __name__ == '__main__':
     print("Training Case Parameters:")
     print("Is_sharcnet={}, training_mode={}, algorithm={}, learning_mode={}, number_of_visitors={}, interact_with_app={}".format(is_sharcnet, train_mode, alg, learning_mode, n_visitors, interact_with_app))
 
-    env, visitors_bh, agent, bh = init(mode=learning_mode, algorithm=alg, num_visitors=n_visitors,
+    env, visitors_bh, agent, bh = init(mode=learning_mode, algorithm=alg, num_visitors=n_visitors, v_epsilon = v_eps,
                                        unity_dir=unity_dir, no_graphics=no_graphics,
                                        interact_with_app=interact_with_app,
                                        save_dir=save_dir)
