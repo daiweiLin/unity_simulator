@@ -1,0 +1,2 @@
+model_checkpoint_path: "/home/dlsharc/work_debug/point125/save/PLA/2019-10-11-121422-1-3/model/param_action.ckpt"
+all_model_checkpoint_paths: "/home/dlsharc/work_debug/point125/save/PLA/2019-10-11-121422-1-3/model/param_action.ckpt"

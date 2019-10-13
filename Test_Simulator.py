@@ -249,7 +249,8 @@ if __name__ == '__main__':
         learning_mode = sys.argv[2]
         alg = sys.argv[3]
         n_visitors = int(sys.argv[4])
-        job_id = sys.argv[5]
+        v_eps = float(sys.argv[5])
+        job_id = sys.argv[6]
 
     if is_sharcnet:
         interact_with_app = True
@@ -270,7 +271,8 @@ if __name__ == '__main__':
     save_dir = os.path.join(os.path.abspath('.'), 'save', learning_mode, date+"-"+job_id)
 
     print("Training Case Parameters:")
-    print("Is_sharcnet={}, training_mode={}, algorithm={}, learning_mode={}, number_of_visitors={}, interact_with_app={}".format(is_sharcnet, train_mode, alg, learning_mode, n_visitors, interact_with_app))
+    print("Is_sharcnet={}, training_mode={}, algorithm={}, learning_mode={},"
+          " number_of_visitors={}, visitor epsilon={}, interact_with_app={}".format(is_sharcnet, train_mode, alg, learning_mode, n_visitors, v_eps, interact_with_app))
 
     env, visitors_bh, agent, bh = init(mode=learning_mode, algorithm=alg, num_visitors=n_visitors, v_epsilon = v_eps,
                                        unity_dir=unity_dir, no_graphics=no_graphics,
