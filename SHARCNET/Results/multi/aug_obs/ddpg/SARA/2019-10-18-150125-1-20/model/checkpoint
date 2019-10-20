@@ -1,0 +1,2 @@
+model_checkpoint_path: "/home/dlsharc/work_debug/aug_obs2/save/SARA/2019-10-18-150125-1-20/model/param_action.ckpt"
+all_model_checkpoint_paths: "/home/dlsharc/work_debug/aug_obs2/save/SARA/2019-10-18-150125-1-20/model/param_action.ckpt"

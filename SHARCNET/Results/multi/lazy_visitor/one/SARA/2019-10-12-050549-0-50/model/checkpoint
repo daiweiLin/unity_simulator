@@ -1,2 +1,0 @@
-model_checkpoint_path: "/lustre03/project/6001934/dlsharc/work_debug/ddpg/300_300/one/save/SARA/2019-10-12-050549-0-50/model/param_action.ckpt"
-all_model_checkpoint_paths: "/lustre03/project/6001934/dlsharc/work_debug/ddpg/300_300/one/save/SARA/2019-10-12-050549-0-50/model/param_action.ckpt"
