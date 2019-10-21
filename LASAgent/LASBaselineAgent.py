@@ -339,7 +339,7 @@ class BaselineAgent:
                 self.epoch_episodes += 1
                 self.episodes += 1
 
-                # self.agent.reset() # <<<<???? not sure
+                self.agent.reset() # <<<< very important !!!!!!!!!!!!!!!!
                 # For simulation on unity, no reset needed. Because the simulation is to simulate ROM experiment.
                 # if self.env is not None:
                 #     obs = self.env.reset()
