@@ -124,6 +124,7 @@ class Visitor_behaviour:
         """
         visitor_actions = list()
         obs = observation[0 : self.node_number]
+        # print("visitor observation :{}".format(obs))
         node_positions = observation[self.node_number:self.node_number*3]
 
         is_arrv = observation[self.node_number*3:self.node_number*3 + self.num_visitors*2][::2]

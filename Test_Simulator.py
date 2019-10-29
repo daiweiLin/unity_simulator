@@ -19,13 +19,7 @@ from Visitor_behaviour import *
 from LASAgent.LASRandomAgent import *
 from LASAgent.LASSpinUpPPOAgent import *
 from LASAgent.LASSpinUpTD3Agent import *
-
-
-def LAS_behavior(p, action_dimension):
-    if np.random.rand(1) < p:
-        return np.random.randn(action_dimension)
-    else:
-        return np.zeros(action_dimension)
+from LASAgent.LASSpinUpDDPGAgent import *
 
 
 def init(mode, algorithm, num_visitors, v_epsilon, unity_dir, save_dir, no_graphics=False, interact_with_app=True):
@@ -80,8 +74,11 @@ def init(mode, algorithm, num_visitors, v_epsilon, unity_dir, save_dir, no_graph
         behaviour = Behaviour(ROM_sculpture, system_freq=50)
 
         # initialize ml agent
+        # if algorithm == 'ddpg':
+        #     agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=11, num_observation=25,
+        #                          env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
         if algorithm == 'ddpg':
-            agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=11, num_observation=25,
+            agent = LASSpinUpDDPGAgent('Baseline_Agent', observation_dim=24, action_dim=11, num_observation=25,
                                  env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
         elif algorithm == 'ppo':
             agent = LASSpinUpPPOAgent('SpinUP_PPO_Agent', observation_dim=24, action_dim=11, num_observation=25,
@@ -93,8 +90,11 @@ def init(mode, algorithm, num_visitors, v_epsilon, unity_dir, save_dir, no_graph
 
     elif mode == 'SARA':
         # initialize ml agent
+        # if algorithm == 'ddpg':
+        #     agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=168, num_observation=25,
+        #                              env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
         if algorithm == 'ddpg':
-            agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=168, num_observation=25,
+            agent = LASSpinUpDDPGAgent('SpinUp_DDPG_Agent', observation_dim=24, action_dim=168, num_observation=25,
                                      env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
         elif algorithm == 'ppo':
             agent = LASSpinUpPPOAgent('SpinUP_PPO_Agent', observation_dim=24, action_dim=168, num_observation=25,
@@ -133,8 +133,9 @@ def run(mode, algorithm, behaviour, agent, visitors_behaviour):
 
     if mode == 'PLA':
         if algorithm == 'ddpg':
-            total_steps = agent.baseline_agent.nb_epochs * agent.baseline_agent.nb_epoch_cycles * \
-                          agent.baseline_agent.nb_rollout_steps
+            # total_steps = agent.baseline_agent.nb_epochs * agent.baseline_agent.nb_epoch_cycles * \
+            #               agent.baseline_agent.nb_rollout_steps
+            total_steps = agent.ddpg_agent.total_steps
         elif algorithm == 'ppo':
             total_steps = agent.ppo_agent.local_steps_per_epoch * agent.ppo_agent.epochs
         else:
@@ -173,9 +174,11 @@ def run(mode, algorithm, behaviour, agent, visitors_behaviour):
 
     elif mode == 'SARA':
         if algorithm == 'ddpg':
-            total_steps = agent.baseline_agent.nb_epochs * agent.baseline_agent.nb_epoch_cycles * \
-                          agent.baseline_agent.nb_rollout_steps
-            LAS_action = agent.baseline_agent.action_space.sample().tolist() + [take_action_flag]
+            # total_steps = agent.baseline_agent.nb_epochs * agent.baseline_agent.nb_epoch_cycles * \
+            #               agent.baseline_agent.nb_rollout_steps
+            # LAS_action = agent.baseline_agent.action_space.sample().tolist() + [take_action_flag]
+            total_steps = agent.ddpg_agent.total_steps
+            LAS_action = agent.ddpg_agent.action_space.sample().tolist() + [take_action_flag]
         elif algorithm == 'ppo':
             total_steps = agent.ppo_agent.local_steps_per_epoch * agent.ppo_agent.epochs
             LAS_action = agent.ppo_agent.action_space.sample().tolist() + [take_action_flag]
