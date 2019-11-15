@@ -1,0 +1,2 @@
+Epoch	AverageEpRet	StdEpRet	MaxEpRet	MinEpRet	EpLen	TotalEnvInteracts	AverageQVals	StdQVals	MaxQVals	MinQVals	LossPi	LossQ	Time
+1	2.989324	0.0	2.989324	2.989324	25.0	25	0.10840752	0.2108111	0.66042686	-0.807299	-0.2095003	0.030300364	34.96809411048889

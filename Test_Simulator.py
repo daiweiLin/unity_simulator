@@ -16,13 +16,14 @@ from mlagents.envs.exception import UnityWorkerInUseException
 from Prescripted_behaviour_timing import *
 from LASAgent.LASBaselineAgent import *
 from Visitor_behaviour import *
+from Visitor_behaviour_sequence import *
 from LASAgent.LASRandomAgent import *
 from LASAgent.LASSpinUpPPOAgent import *
 from LASAgent.LASSpinUpTD3Agent import *
 from LASAgent.LASSpinUpDDPGAgent import *
 
 
-def init(mode, algorithm, num_visitors, v_epsilon, unity_dir, save_dir, no_graphics=False, interact_with_app=True):
+def init(mode, algorithm, num_visitors, v_epsilon, attr_model, unity_dir, save_dir, no_graphics=False, interact_with_app=True):
     """
     :param mode: Random, SARA or PLA
     :param algorithm: 'ddpg', 'ppo' and 'td3'
@@ -56,7 +57,10 @@ def init(mode, algorithm, num_visitors, v_epsilon, unity_dir, save_dir, no_graph
     ############
     # Visitors #
     ############
-    visitor_bh = Visitor_behaviour(num_visitors, epsilon=v_epsilon)
+    if attr_model == 'simple':
+        visitor_bh = Visitor_behaviour(num_visitors, epsilon=v_epsilon)
+    else:
+        visitor_bh = Visitor_behaviour_sequence(num_visitors, epsilon=v_epsilon)
 
     ##################
     # Learning Agent #
@@ -74,12 +78,12 @@ def init(mode, algorithm, num_visitors, v_epsilon, unity_dir, save_dir, no_graph
         behaviour = Behaviour(ROM_sculpture, system_freq=50)
 
         # initialize ml agent
-        # if algorithm == 'ddpg':
-        #     agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=11, num_observation=25,
-        #                          env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
         if algorithm == 'ddpg':
-            agent = LASSpinUpDDPGAgent('Baseline_Agent', observation_dim=24, action_dim=11, num_observation=25,
+            agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=11, num_observation=25,
                                  env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
+        # if algorithm == 'ddpg':
+        #     agent = LASSpinUpDDPGAgent('Baseline_Agent', observation_dim=24, action_dim=11, num_observation=25,
+        #                          env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
         elif algorithm == 'ppo':
             agent = LASSpinUpPPOAgent('SpinUP_PPO_Agent', observation_dim=24, action_dim=11, num_observation=25,
                                   env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
@@ -90,12 +94,12 @@ def init(mode, algorithm, num_visitors, v_epsilon, unity_dir, save_dir, no_graph
 
     elif mode == 'SARA':
         # initialize ml agent
-        # if algorithm == 'ddpg':
-        #     agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=168, num_observation=25,
-        #                              env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
         if algorithm == 'ddpg':
-            agent = LASSpinUpDDPGAgent('SpinUp_DDPG_Agent', observation_dim=24, action_dim=168, num_observation=25,
+            agent = LASBaselineAgent('Baseline_Agent', observation_dim=24, action_dim=168, num_observation=25,
                                      env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
+        # if algorithm == 'ddpg':
+        #     agent = LASSpinUpDDPGAgent('SpinUp_DDPG_Agent', observation_dim=24, action_dim=168, num_observation=25,
+        #                              env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
         elif algorithm == 'ppo':
             agent = LASSpinUpPPOAgent('SpinUP_PPO_Agent', observation_dim=24, action_dim=168, num_observation=25,
                                   env=env, env_type='Unity', load_pretrained_agent_flag=False, save_dir=save_dir)
@@ -133,9 +137,9 @@ def run(mode, algorithm, behaviour, agent, visitors_behaviour):
 
     if mode == 'PLA':
         if algorithm == 'ddpg':
-            # total_steps = agent.baseline_agent.nb_epochs * agent.baseline_agent.nb_epoch_cycles * \
-            #               agent.baseline_agent.nb_rollout_steps
-            total_steps = agent.ddpg_agent.total_steps
+            total_steps = agent.baseline_agent.nb_epochs * agent.baseline_agent.nb_epoch_cycles * \
+                          agent.baseline_agent.nb_rollout_steps
+            # total_steps = agent.ddpg_agent.total_steps
         elif algorithm == 'ppo':
             total_steps = agent.ppo_agent.local_steps_per_epoch * agent.ppo_agent.epochs
         else:
@@ -174,11 +178,11 @@ def run(mode, algorithm, behaviour, agent, visitors_behaviour):
 
     elif mode == 'SARA':
         if algorithm == 'ddpg':
-            # total_steps = agent.baseline_agent.nb_epochs * agent.baseline_agent.nb_epoch_cycles * \
-            #               agent.baseline_agent.nb_rollout_steps
-            # LAS_action = agent.baseline_agent.action_space.sample().tolist() + [take_action_flag]
-            total_steps = agent.ddpg_agent.total_steps
-            LAS_action = agent.ddpg_agent.action_space.sample().tolist() + [take_action_flag]
+            total_steps = agent.baseline_agent.nb_epochs * agent.baseline_agent.nb_epoch_cycles * \
+                          agent.baseline_agent.nb_rollout_steps
+            LAS_action = agent.baseline_agent.action_space.sample().tolist() + [take_action_flag]
+            # total_steps = agent.ddpg_agent.total_steps
+            # LAS_action = agent.ddpg_agent.action_space.sample().tolist() + [take_action_flag]
         elif algorithm == 'ppo':
             total_steps = agent.ppo_agent.local_steps_per_epoch * agent.ppo_agent.epochs
             LAS_action = agent.ppo_agent.action_space.sample().tolist() + [take_action_flag]
@@ -240,9 +244,10 @@ def run(mode, algorithm, behaviour, agent, visitors_behaviour):
 if __name__ == '__main__':
 
     train_mode = True  # Whether to run the environment in training or inference mode
-    learning_mode = 'Random'  # 'SARA', 'PLA', 'Random'
+    learning_mode = 'PLA'  # 'SARA', 'PLA', 'Random'
     alg = 'ddpg'  # 'ddpg','ppo', 'td3'
     n_visitors = 1
+    attr_model = 'sequence' # 'simple', 'sequence'
     v_eps = 0.1
 
     is_sharcnet = False
@@ -253,7 +258,8 @@ if __name__ == '__main__':
         alg = sys.argv[3]
         n_visitors = int(sys.argv[4])
         v_eps = float(sys.argv[5])
-        job_id = sys.argv[6]
+        attr_model = sys.argv[6]
+        job_id = sys.argv[7]
 
     if is_sharcnet:
         interact_with_app = True
@@ -275,10 +281,9 @@ if __name__ == '__main__':
 
     print("Training Case Parameters:")
     print("Is_sharcnet={}, training_mode={}, algorithm={}, learning_mode={},"
-          " number_of_visitors={}, visitor epsilon={}, interact_with_app={}".format(is_sharcnet, train_mode, alg, learning_mode, n_visitors, v_eps, interact_with_app))
+          " number_of_visitors={}, visitor epsilon={}, attraction_model={}, interact_with_app={}".format(is_sharcnet, train_mode, alg, learning_mode, n_visitors, v_eps, attr_model, interact_with_app))
 
     env, visitors_bh, agent, bh = init(mode=learning_mode, algorithm=alg, num_visitors=n_visitors, v_epsilon = v_eps,
-                                       unity_dir=unity_dir, no_graphics=no_graphics,
-                                       interact_with_app=interact_with_app,
-                                       save_dir=save_dir)
+                                       attr_model=attr_model, unity_dir=unity_dir, no_graphics=no_graphics,
+                                       interact_with_app=interact_with_app, save_dir=save_dir)
     run(mode=learning_mode, algorithm=alg, behaviour=bh, agent=agent, visitors_behaviour=visitors_bh)

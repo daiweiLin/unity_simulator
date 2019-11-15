@@ -5,4 +5,4 @@
 #SBATCH -o s_pla_%job.out
 #SBATCH --job-name=one_single_0_pla
 source ~/unity_ml/bin/activate
-python Test_Simulator.py True PLA ddpg 1 0 $SLURM_ARRAY_TASK_ID
+python Test_Simulator.py True PLA ddpg 1 0 sequence $SLURM_ARRAY_TASK_ID

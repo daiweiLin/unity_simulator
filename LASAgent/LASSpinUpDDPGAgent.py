@@ -290,6 +290,7 @@ class SpinUpDDPGAgent:
             Perform all DDPG updates at the end of the trajectory,
             in accordance with tuning done by TD3 paper authors.
             """
+            # print("train networks")
             for _ in range(self.ep_len):
                 batch = self.replay_buffer.sample_batch(self.batch_size)
                 feed_dict = {self.x_ph: batch['obs1'],
