@@ -1,0 +1,2 @@
+model_checkpoint_path: "/home/dlsharc/work_debug/one/vzero_old_multi_model2/save/SARA/2019-11-16-160926-1-70/model/param_action.ckpt"
+all_model_checkpoint_paths: "/home/dlsharc/work_debug/one/vzero_old_multi_model2/save/SARA/2019-11-16-160926-1-70/model/param_action.ckpt"
