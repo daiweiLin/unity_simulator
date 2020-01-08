@@ -4,7 +4,7 @@ This folder contains implemented Learning Algorithms for Living Architecture Sys
 ## Intermediate Internal Environment Classes
 To ensure reusability, we use an intermediate class for realistic interaction in which reward signal is not provided by the environment, at the same time seamlessly working with virtual environment with interfaces as in [OpenAI Gym](https://gym.openai.com/docs/). 
 **Internal Environment for Single Agent** is mainly used to receive observation from, calculate reward and deliver action chosen by agent to real or virtual external environment.
-   * InternalEnvOfAgent.py
+   * InternalEnvironment.py
 
 ## Learning Agent Classes
 
