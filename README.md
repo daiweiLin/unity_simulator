@@ -2,7 +2,7 @@
 Living Architecture System simulated environment with Unity's [Machine Learning Toolkits](https://github.com/Unity-Technologies/ml-agents).
 ## Installation
 Refer to Unity's instructions: https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Installation.md
-If you want to install old versions of toolkits instead of the latest version, v0.6 for example, do following instead
+If you want to install old versions of toolkits instead of the latest version, for example v0.6 used in this repository, do following instead
 ```
 pip install mlagents=0.6.0
 ```
@@ -29,7 +29,11 @@ This will run simulation in the Unity executables. The simulation usually is fas
    2. Prescripted Behaviour: `Prescripted_behaviour.py`
 
 ### Interaction paradigm and Simulator
-<img src="https://github.com/daiweiLin/unity_simulator/blob/master/InitialDesignIdeas/DesignFigures/Interaction%20Diagram.png" /> 
+
+|Overall Diagram           | Adaptive Behaviour Block |
+:-------------------------:|:-------------------------:
+|![](https://github.com/daiweiLin/unity_simulator/blob/master/InitialDesignIdeas/DesignFigures/Interaction%20Diagram.png)  |  ![](https://github.com/daiweiLin/unity_simulator/blob/master/InitialDesignIdeas/DesignFigures/Adaptive%20Behaviour.png)|
+
 
 ## Dependency
    1. OpenAI baseline
