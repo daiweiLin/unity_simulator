@@ -24,9 +24,14 @@ pip install mlagents=0.6.0
 This will run simulation in the Unity executables. The simulation usually is faster using executables than inside the Unity editor.
 
 ## Organization
-### Interaction scripts
+### Composition
    1. Interaction between LAS, visitors and Environment: `Test_simulator.py`
-   2. Prescripted Behaviour: `Prescripted_behaviour.py`
+   2. Prescripted Behaviour: `Prescripted_behaviour_timing.py`. This file uses time in Unity simulator instead of world time, so that pre-scripted behaviour is not affected by simulation speed.
+   3. Visitor:
+      * `Visitor_behaviour.py` --- Attracted by Intensity of LED at each time step
+      * `Visitor_behaviour_sequence.py` --- Attracted by a sequence of actions produced by LAS
+   4. LAS agents: All in `LASAgent` folder
+   
 
 ### Interaction paradigm and Simulator
 
@@ -36,7 +41,6 @@ This will run simulation in the Unity executables. The simulation usually is fas
 
 
 ## Dependency
-   1. OpenAI baseline
+   1. OpenAI baseline, spinningup
    2. Unity's Machine Learning Toolkit
    3. Tensorflow
-   4. tflearn
